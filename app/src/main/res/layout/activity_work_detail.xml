@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
+
+    <!-- ==================== 顶部作者区（常驻）==================== -->
+    <!-- 修改点1: 优化顶部栏的布局和间距 -->
+    <LinearLayout
+        android:id="@+id/top_author_bar"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@android:color/white"
+        android:elevation="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 返回按钮 -->
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_s_s_arrowleft"
+            android:padding="12dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回" />
+
+        <!-- 作者头像 -->
+        <ImageView
+            android:id="@+id/iv_avatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_profile_avatar"
+            android:contentDescription="作者头像"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_default_avatar" />
+
+        <!-- 作者昵称 -->
+        <TextView
+            android:id="@+id/tv_author_nickname"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="作者昵称"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:id="@+id/btn_follow_container">
+        <!-- 修改点2: 关注按钮支持状态切换，使用selector drawable -->
+            <TextView
+                android:id="@+id/btn_follow"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_button_follow_selector"
+                android:textColor="@drawable/follow_button_text_color"
+                android:gravity="center"
+                android:minWidth="100dp"
+                android:maxWidth="100dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="关注"
+                android:textSize="14sp" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- ==================== 中间可滚动内容区域 ==================== -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/top_author_bar"
+        app:layout_constraintBottom_toTopOf="@id/bottom_interaction_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- ==================== 横滑图片容器 ==================== -->
+            <!-- 修改点3: 使用 ViewPager2 替代原有的 ViewPager2 并优化容器结构 -->
+            <FrameLayout
+                android:id="@+id/image_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#F5F5F5">
+
+                <!-- ViewPager2 用于横滑图片 -->
+                <!-- 修改点4: 动态设置高度以适配首图比例(3:4 ~ 16:9) -->
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/viewpager_images"
+                    android:layout_width="match_parent"
+                    android:layout_height="400dp"
+                    android:transitionName="shared_image"
+                    android:background="@android:color/transparent" />
+                <!-- 音量控制按钮 - 右下角 -->
+                <ImageView
+                    android:id="@+id/iv_volume"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="16dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_volume_on"
+                    android:background="@drawable/bg_volume_button"
+                    android:contentDescription="音量控制"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone" />
+                <!-- 修改点5: 进度条指示器（多图时显示，采用条状设计） -->
+                <LinearLayout
+                    android:id="@+id/layout_indicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_gravity="bottom"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:layout_marginBottom="12dp"
+                    android:orientation="horizontal"
+                    android:visibility="gone" />
+
+                <!-- 修改点6: 图片加载状态提示 -->
+                <ProgressBar
+                    android:id="@+id/pb_image_loading"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <!-- 修改点7: 图片加载失败提示 -->
+                <LinearLayout
+                    android:id="@+id/layout_image_error"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_menu_report_image"
+                        android:alpha="0.4"
+                        android:contentDescription="加载失败" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="图片加载失败"
+                        android:textSize="13sp"
+                        android:textColor="@color/gray"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+
+<!--                &lt;!&ndash; 修改点8: 图片数量指示器（右上角显示 1/5 样式） &ndash;&gt;-->
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_image_count"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_gravity="top|end"-->
+<!--                    android:layout_margin="12dp"-->
+<!--                    android:background="@drawable/bg_image_count"-->
+<!--                    android:paddingStart="10dp"-->
+<!--                    android:paddingEnd="10dp"-->
+<!--                    android:paddingTop="4dp"-->
+<!--                    android:paddingBottom="4dp"-->
+<!--                    android:text="1/5"-->
+<!--                    android:textColor="@android:color/white"-->
+<!--                    android:textSize="12sp"-->
+<!--                    android:visibility="gone" />-->
+            </FrameLayout>
+
+            <!-- ==================== 内容区域 ==================== -->
+            <!-- 修改点9: 优化内容区域的间距和层次 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="373dp"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="20dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp">
+
+                <!-- 标题（可选展示） -->
+                <TextView
+                    android:id="@+id/tv_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="作品标题完整展示不截断"
+                    android:textColor="@color/black"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <!-- 修改点10: 正文区域优化，支持话题词高亮 -->
+                <TextView
+                    android:id="@+id/tv_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:lineSpacingExtra="6dp"
+                    android:lineSpacingMultiplier="1.2"
+                    android:text="这是正文内容，完整展示不截断。#话题词 可以点击跳转。"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <!-- 修改点11: 发布日期区域优化，增加图标 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+<!--                    <ImageView-->
+<!--                        android:layout_width="14dp"-->
+<!--                        android:layout_height="14dp"-->
+<!--                        android:alpha="0.5"-->
+<!--                        android:contentDescription="时间"-->
+<!--                        android:src="@android:drawable/ic_menu_recent_history" />-->
+
+                    <TextView
+                        android:id="@+id/tv_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="12-25"
+                        android:textColor="@color/gray"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+
+                <!-- 修改点13: 可选的相关推荐区域 -->
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_related_title"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginTop="20dp"-->
+<!--                    android:text="相关推荐"-->
+<!--                    android:textColor="@color/black"-->
+<!--                    android:textSize="16sp"-->
+<!--                    android:textStyle="bold"-->
+<!--                    android:visibility="gone" />-->
+
+<!--                <androidx.recyclerview.widget.RecyclerView-->
+<!--                    android:id="@+id/rv_related"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginTop="12dp"-->
+<!--                    android:visibility="gone" />-->
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- ==================== 底部交互区（常驻）==================== -->
+    <!-- 修改点14: 优化底部交互栏的布局和视觉效果 -->
+    <LinearLayout
+        android:id="@+id/bottom_interaction_bar"
+        android:layout_width="0dp"
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 修改点15: 快捷评论框优化样式 -->
+        <TextView
+            android:id="@+id/et_comment"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:hint="说点什么..."
+            android:textSize="14sp"
+            android:textColorHint="#999999"
+            android:background="@drawable/bg_comment_input"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp" />
+
+        <!-- 修改点16: 点赞按钮优化，支持动画效果 -->
+        <LinearLayout
+            android:id="@+id/layout_like"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_like"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_like_detail"
+                android:contentDescription="点赞" />
+
+            <TextView
+                android:id="@+id/tv_like_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="195"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- 评论按钮 -->
+        <LinearLayout
+            android:id="@+id/layout_comment"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_comment"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_comment_detail"
+                android:contentDescription="评论" />
+
+            <TextView
+                android:id="@+id/tv_comment_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="53"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- 收藏按钮 -->
+        <LinearLayout
+            android:id="@+id/layout_collect"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_collect"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_collect_detail"
+                android:contentDescription="收藏" />
+
+            <TextView
+                android:id="@+id/tv_collect_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="41"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- 修改点17: 分享按钮优化 -->
+        <LinearLayout
+            android:id="@+id/layout_share"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_share"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_share_detail"
+                android:contentDescription="分享" />
+
+            <TextView
+                android:id="@+id/tv_share_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="23"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

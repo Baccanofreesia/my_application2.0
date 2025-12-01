@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ⚠️ 必须定义这些颜色，主题会引用它们 -->
+    <color name="colorPrimary">#2196F3</color>
+    <color name="colorPrimaryDark">#1976D2</color>
+    <color name="colorAccent">#FF5722</color>
+    <color name="black">#333333</color>
+    <color name="gray">#999999</color>
+    <color name="gray_light">#BDBDBD</color>
+    <color name="divider">#F0F0F0</color>
+    <color name="xhs_red">#FF2442</color>
+    <color name="white">#FFFFFF</color>
+    <color name="blue_header">#5C93E6</color>
+    <color name="profile_blue">#3E7BEE</color>
+    <color name="profile_blue_dark">#2358C5</color>
+</resources>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/login_background"
+    android:padding="32dp"
+    android:gravity="center">
+
+    <!-- 欢迎标题 - 左对齐 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="欢迎登录"
+        android:textSize="32sp"
+        android:textColor="#333333"
+        android:textStyle="bold"
+        android:gravity="start"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请登录您的账户"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:gravity="start"
+        android:layout_marginBottom="48dp" />
+
+    <!-- 用户名输入框 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/input_background"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_dialog_email"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="12dp"
+            app:tint="#666666" />
+
+        <EditText
+            android:id="@+id/et_username"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="请输入邮箱"
+            android:inputType="textEmailAddress"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- 密码输入框 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/input_background"
+        android:padding="12dp"
+        android:layout_marginBottom="24dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_lock_lock"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="12dp"
+            app:tint="#666666"/>
+
+        <EditText
+            android:id="@+id/et_password"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="请输入密码"
+            android:inputType="textPassword"
+            android:textSize="16sp" />
+
+        <ImageView
+            android:id="@+id/iv_show_password"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/avator_closeeye"
+            android:layout_gravity="center_vertical"
+            app:tint="#666666"/>
+    </LinearLayout>
+
+    <!-- 忘记密码 -->
+    <TextView
+        android:id="@+id/tv_forget_password"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="忘记密码?"
+        android:textColor="#2196F3"
+        android:textSize="14sp"
+        android:gravity="end"
+        android:layout_marginBottom="32dp"/>
+
+    <!-- 登录按钮 -->
+    <Button
+        android:id="@+id/btn_login"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="登录"
+        android:textSize="18sp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/button_background"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- 或者 - 带分割线 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#E0E0E0"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="或者"
+            android:textColor="#999999"
+            android:textSize="14sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#E0E0E0"/>
+    </LinearLayout>
+
+    <!-- 第三方登录 - 平分宽度 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- 微信登录 -->
+        <LinearLayout
+            android:id="@+id/ll_wechat_login"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="16dp"
+            android:background="@drawable/third_party_login_background"
+            android:layout_marginEnd="8dp">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/avator_wexin"
+                android:layout_marginEnd="8dp"
+                app:tint="#07C160"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="微信登录"
+                android:textSize="14sp"
+                android:textColor="#333333"/>
+        </LinearLayout>
+
+        <!-- Apple登录 -->
+        <LinearLayout
+            android:id="@+id/ll_apple_login"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="16dp"
+            android:background="@drawable/third_party_login_background"
+            android:layout_marginStart="8dp">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/avator_apple"
+                android:layout_marginEnd="8dp"
+                app:tint="#000000"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Apple登录"
+                android:textSize="14sp"
+                android:textColor="#333333"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 注册链接 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="还没有账户? "
+            android:textColor="#999999"
+            android:textSize="14sp"/>
+
+        <TextView
+            android:id="@+id/tv_register"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="立即注册"
+            android:textColor="#2196F3"
+            android:textSize="14sp"/>
+    </LinearLayout>
+
+</LinearLayout>
