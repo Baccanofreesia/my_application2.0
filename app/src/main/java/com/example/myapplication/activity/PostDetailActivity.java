@@ -110,7 +110,7 @@ public class PostDetailActivity extends AppCompatActivity {
     private FollowManager followManager;
     private MusicStateManager musicStateManager;
 
-    private boolean hasMusic = false;  // ✅ 标记是否有音频,这个有什么用？
+    private boolean hasMusic = false;
     private boolean isMediaPrepared = false;
     private MediaPlayer mediaPlayer;
     // 自动轮播相关
@@ -454,7 +454,7 @@ public class PostDetailActivity extends AppCompatActivity {
         // 先释放旧的 MediaPlayer
         releaseMediaPlayer();
         try {
-            android.util.Log.d("MediaPlayer", "📀 初始化音频: " + music.getUrl());
+            android.util.Log.d("MediaPlayer", "初始化音频: " + music.getUrl());
             // 1. 创建 MediaPlayer
             mediaPlayer = new MediaPlayer();
             // 1. 设置音频流类型
@@ -603,7 +603,7 @@ public class PostDetailActivity extends AppCompatActivity {
                         ", currentItem=" + viewPagerImages.getCurrentItem());
                 if (!isMuted && position == viewPagerImages.getCurrentItem()) {
                     int nextPosition = (position + 1) % totalClipCount;
-                    android.util.Log.d("VideoCallback", "🔄 自动切换到: " + nextPosition);
+                    android.util.Log.d("VideoCallback", "自动切换到: " + nextPosition);
 
                     viewPagerImages.postDelayed(() -> {
                         viewPagerImages.setCurrentItem(nextPosition, true);
@@ -1130,7 +1130,7 @@ public class PostDetailActivity extends AppCompatActivity {
      * 回弹动画
      */
     private void animateBack() {
-        android.util.Log.d("SwipeBack", "↩️ 执行回弹动画");
+        android.util.Log.d("SwipeBack", "执行回弹动画");
 
         ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
         animator.setDuration(250);
