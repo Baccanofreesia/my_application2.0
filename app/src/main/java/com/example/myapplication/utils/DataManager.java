@@ -1,7 +1,13 @@
 package com.example.myapplication.utils;
 
 import android.util.LruCache;
+
+import com.example.myapplication.model.Author;
+import com.example.myapplication.model.Clip;
+import com.example.myapplication.model.Music;
 import com.example.myapplication.model.Post;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class DataManager {
@@ -72,6 +78,47 @@ public class DataManager {
 
     // 获取 Post
     public Post getPostById(String postId) {
+        //测试数据
+//        if ("TEST_VIDEO".equals(postId)) {
+//            Post test = new Post();
+//            test.setPostId("TEST_VIDEO");
+//            test.setTitle("视频播放测试（混合图文+背景音乐）");
+//            test.setContent("这是一条测试作品，包含视频、图片和背景音乐 #测试");
+//
+//            Author author = new Author();
+//            author.setNickname("测试君");
+//            author.setAvatar("https://lf3-static.bytednsdoc.com/obj/eden-cn/kndeh7nuvkuhbnbd/test/avatar.jpg");
+//            test.setAuthor(author);
+//
+//            List<Clip> clips = new ArrayList<>();
+//
+//            // 第一条：视频（会自动决定容器高度）
+//            Clip videoClip = new Clip();
+//            videoClip.setType(1);
+//            videoClip.setUrl("file:///android_asset/test_video.mp4");
+//            // 下面这行很重要！不写宽高会走 fallback 3:4
+//            videoClip.setWidth(1280);
+//            videoClip.setHeight(720);
+//            clips.add(videoClip);
+//
+//            // 第二条：图片
+//            Clip imgClip = new Clip();
+//            imgClip.setType(0);
+//            imgClip.setUrl("https://lf3-static.bytednsdoc.com/obj/eden-cn/kndeh7nuvkuhbnbd/test/cobblestone.jpg");
+//            imgClip.setWidth(800);
+//            imgClip.setHeight(600);
+//            clips.add(imgClip);
+//
+//            test.setClips(clips);
+//
+//            // 背景音乐（可选）
+//            Music music = new Music();
+//            music.setUrl("file:///android_asset/bgm.mp3");
+//            test.setMusic(music);
+//
+//            return test;
+//        }
+
         return postCache.get(postId);
     }
 

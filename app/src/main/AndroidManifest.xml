@@ -25,7 +25,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".activity.PostDetailActivity"
-            android:exported="false" />//如果是加上android:exported="false"是什么意思？ // 表示该活动仅对应用内其他组件可见，外部无法启动该活动。 // 这可以防止其他应用通过意图启动该活动，从而提高应用的安全性。
+            android:exported="false" />
         <activity android:name=".activity.HashtagActivity"
             android:exported="false" />
     </application>

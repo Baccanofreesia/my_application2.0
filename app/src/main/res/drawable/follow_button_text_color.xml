@@ -6,6 +6,6 @@
     <item android:state_selected="true" android:color="#DDDDDD" />
 
     <!-- 未关注状态：红色文字 -->
-    <item android:color="#EAFF2442" />
+    <item android:color="#FE2C55" />
 
 </selector>

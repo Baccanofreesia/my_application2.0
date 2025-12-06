@@ -23,13 +23,6 @@ import java.util.List;
  */
 public class HashtagHelper {
 
-    /**
-     * 为TextView设置可点击的话题词
-     * @param context 上下文
-     * @param textView 目标TextView
-     * @param content 正文内容
-     * @param hashtags 话题词列表
-     */
     public static void setClickableHashtags(Context context, TextView textView, String content, List<Hashtag> hashtags) {
         if (hashtags == null || hashtags.isEmpty()) {
             textView.setText(content);
@@ -50,13 +43,9 @@ public class HashtagHelper {
                 ClickableSpan clickableSpan = new ClickableSpan() {
                     @Override
                     public void onClick(@NonNull View widget) {
-                        // 点击话题词后的操作
                         Toast.makeText(context, "点击了话题：" + hashtagText, Toast.LENGTH_SHORT).show();
 
                         // TODO: 跳转到话题详情页
-                        // Intent intent = new Intent(context, HashtagActivity.class);
-                        // intent.putExtra("hashtag", hashtagText);
-                        // context.startActivity(intent);
                     }
 
                     @Override

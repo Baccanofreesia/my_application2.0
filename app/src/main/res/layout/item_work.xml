@@ -4,9 +4,9 @@
     android:id="@+id/card_work"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="6dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp"
+    android:layout_margin="2dp"
+    app:cardCornerRadius="4dp"
+    app:cardElevation="1dp"
     android:foreground="?android:attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
@@ -25,33 +25,35 @@
             android:scaleType="centerCrop"
             android:background="#F0F0F0"
             android:contentDescription="作品封面" />
-
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp">
         <!-- 作品标题/正文 -->
         <TextView
             android:id="@+id/tv_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp"
-            android:paddingBottom="8dp"
             android:text="作品标题"
             android:textSize="14sp"
-            android:textColor="#333333"
+            android:textColor="#161823"
+            android:fontFamily="@font/pingfangmedium"
             android:maxLines="2"
             android:ellipsize="end"
-            android:lineSpacingExtra="2dp" />
-        <!-- 底栏：作者信息 + 点赞 -->
+            android:lineSpacingExtra="2dp"
+            android:layout_marginBottom="6dp"/>
+        <!-- 底栏-->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="12dp">
+            android:minHeight="20dp">
 
             <!-- 作者头像 -->
             <ImageView
                 android:id="@+id/iv_avatar"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_default_avatar"
                 android:background="@drawable/bg_profile_avatar"
                 android:scaleType="centerCrop"
@@ -66,17 +68,19 @@
                 android:id="@+id/tv_nickname"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="12dp"
+                android:layout_marginStart="4dp"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:text="作者昵称"
-                android:textColor="#999999"
-                android:textSize="12sp"
+                android:textColor="#99161823"
+                android:textSize="11sp"
+                android:fontFamily="@font/pingfangregular"
                 app:layout_constraintStart_toEndOf="@id/iv_avatar"
                 app:layout_constraintEnd_toStartOf="@id/layout_like"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintHorizontal_bias="0"
+                app:layout_constraintHorizontal_chainStyle="spread_inside"/>
 
             <!-- 点赞区域 -->
             <LinearLayout
@@ -85,7 +89,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:padding="4dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent">
@@ -101,104 +104,15 @@
                     android:id="@+id/tv_like_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="6dp"
                     android:text="190"
-                    android:textSize="14sp"
-                    android:textColor="#999999"/>
+                    android:textSize="11sp"
+                    android:fontFamily="@font/pingfangregular"
+                    android:textColor="#BF161823"/>
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <!--        &lt;!&ndash; 底栏：作者信息 + 点赞 &ndash;&gt;-->
-<!--        <LinearLayout-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:gravity="center_vertical"-->
-<!--            android:orientation="horizontal"-->
-<!--            android:paddingStart="12dp"-->
-<!--            android:paddingEnd="12dp"-->
-<!--            android:paddingBottom="12dp">-->
-
-<!--            &lt;!&ndash; 作者头像 &ndash;&gt;-->
-
-<!--            &lt;!&ndash; 作者昵称 &ndash;&gt;-->
-
-<!--            &lt;!&ndash; 点赞区域 &ndash;&gt;-->
-
-<!--            <ImageView-->
-<!--                android:id="@+id/iv_avatar"-->
-<!--                android:layout_width="20dp"-->
-<!--                android:layout_height="20dp"-->
-<!--                android:background="@drawable/bg_profile_avatar"-->
-<!--                android:contentDescription="作者头像"-->
-<!--                android:gravity="center_vertical"-->
-<!--                android:paddingStart="4dp"-->
-<!--                android:paddingEnd="8dp"-->
-<!--                android:scaleType="centerCrop"-->
-<!--                android:src="@drawable/ic_default_avatar" />-->
-
-<!--            &lt;!&ndash;            <TextView&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:id="@+id/tv_nickname"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:layout_width="252dp"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:layout_height="wrap_content"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:layout_marginStart="4dp"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:layout_weight="1"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:ellipsize="end"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:gravity="center_vertical"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:paddingStart="4dp"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:paddingEnd="8dp"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:singleLine="true"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:text="作者昵称"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:textColor="#999999"&ndash;&gt;-->
-<!--            &lt;!&ndash;                android:textSize="12sp" />&ndash;&gt;-->
-<!--            <TextView-->
-<!--                android:id="@+id/tv_nickname"-->
-<!--                android:layout_width="275dp"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginStart="6dp"-->
-<!--                android:layout_weight="1"-->
-<!--                android:ellipsize="end"-->
-<!--                android:gravity="center_vertical"-->
-<!--                android:paddingStart="4dp"-->
-<!--                android:paddingEnd="8dp"-->
-<!--                android:singleLine="true"-->
-<!--                android:text="作者昵称"-->
-<!--                android:textColor="#999999"-->
-<!--                android:textSize="12sp" />-->
-
-
-<!--            <LinearLayout-->
-<!--                android:id="@+id/layout_like"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:background="?android:attr/selectableItemBackground"-->
-<!--                android:clickable="true"-->
-<!--                android:focusable="true"-->
-<!--                android:gravity="center_vertical"-->
-<!--                android:orientation="horizontal"-->
-<!--                android:padding="4dp">-->
-
-<!--                &lt;!&ndash; 点赞图标 &ndash;&gt;-->
-<!--                <ImageView-->
-<!--                    android:id="@+id/iv_like"-->
-<!--                    android:layout_width="16dp"-->
-<!--                    android:layout_height="16dp"-->
-<!--                    android:contentDescription="点赞"-->
-<!--                    android:src="@drawable/ic_like_normal"-->
-<!--                    android:layout_gravity="center_vertical"/>-->
-
-<!--                &lt;!&ndash; 点赞数量 &ndash;&gt;-->
-<!--                <TextView-->
-<!--                    android:id="@+id/tv_like_count"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="4dp"-->
-<!--                    android:text="190"-->
-<!--                    android:textColor="#999999"-->
-<!--                    android:textSize="14sp"-->
-<!--                    android:layout_gravity="center_vertical"/>-->
-<!--            </LinearLayout>-->
-<!--        </LinearLayout>-->
+    </LinearLayout>
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

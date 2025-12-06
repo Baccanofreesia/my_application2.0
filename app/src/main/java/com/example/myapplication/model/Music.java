@@ -18,4 +18,8 @@ public class Music {
     public String getUrl() {
         return url;
     }
+//测试
+//    public void setUrl(String url) {
+//        this.url = url;
+//    }
 }

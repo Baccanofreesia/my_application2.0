@@ -1,39 +1,44 @@
 package com.example.myapplication.activity;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Looper;
 import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
+import android.view.HapticFeedbackConstants;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.ViewCompat;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.myapplication.R;
-import com.example.myapplication.adapter.ImagePagerAdapter;
+import com.example.myapplication.adapter.ClipPagerAdapter;
 import com.example.myapplication.dialog.ShareDialog;
 import com.example.myapplication.model.Author;
 import com.example.myapplication.model.Clip;
-import com.example.myapplication.model.Hashtag;
 import com.example.myapplication.model.Post;
 import com.example.myapplication.model.Music;
 import com.example.myapplication.utils.AnimationUtils;
@@ -46,14 +51,32 @@ import com.example.myapplication.utils.LikeCountGenerator;
 import com.example.myapplication.utils.LikeManager;
 import com.example.myapplication.utils.MusicStateManager;
 import com.example.myapplication.utils.ShareCountGenerator;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.SimpleExoPlayer;
 
+import java.util.ArrayList;
 import java.util.List;
 import android.os.Handler;
+import android.view.GestureDetector;
 
 /**
  * 作品详情页
  */
 public class PostDetailActivity extends AppCompatActivity {
+    // 滑动相关
+    private float startX, startY;
+    private boolean isSwipeGestureActive = false;
+    // 在类成员里加上
+    private GestureDetector gestureDetector;
+    private boolean isLongPressSwipeMode = false;   // 长按激活的标志
+    private static final float SWIPE_THRESHOLD = 120; // 触发退出的距离（dp）
+    private static final float EDGE_THRESHOLD = 60;   // 边缘识别区域（dp）
+    private boolean isSwipeEnabled = true;           // 控制是否启用侧滑
+
+    // 动画相关
+    private View rootView;
+    private View dimOverlay; // 蒙层
     private ImageView btnBack;
     private ImageView ivAvatar;
     private TextView tvAuthorNickname;
@@ -64,16 +87,17 @@ public class PostDetailActivity extends AppCompatActivity {
     private ProgressBar pbImageLoading;
     private LinearLayout layoutImageError;
     private ImageView ivVolume;
+    private FrameLayout volumeContainer;
     //内容区
     private TextView tvTitle;
     private TextView tvContent;
     private TextView tvDate;
     //底部交互区
     private TextView etComment;
-    private LinearLayout layoutLike;
-    private LinearLayout layoutComment;
-    private LinearLayout layoutCollect;
-    private LinearLayout layoutShare;
+    private ConstraintLayout layoutLike;
+    private ConstraintLayout layoutComment;
+    private ConstraintLayout layoutCollect;
+    private ConstraintLayout layoutShare;
     private ImageView ivLike;
     private ImageView ivComment;
     private TextView tvLikeCount;
@@ -90,17 +114,17 @@ public class PostDetailActivity extends AppCompatActivity {
     private boolean isMediaPrepared = false;
     private MediaPlayer mediaPlayer;
     // 自动轮播相关
-    private Handler autoPlayHandler;
+    private Handler autoPlayHandler= new Handler(Looper.getMainLooper());;
     private Runnable autoPlayRunnable;
-    private static final long AUTO_PLAY_INTERVAL = 3000;  // 3秒切换
+    private static final long AUTO_PLAY_INTERVAL = 10000;
     private boolean isAutoPlaying = false;  // 是否正在自动轮播
     private boolean isUserScrolling = false;  // 用户是否在手动滑动
-    private int totalImageCount = 0;  // 图片总数
+    private int totalClipCount = 0;  // 图片总数
     // 图片加载状态管理
-    private ImagePagerAdapter adapter;
-    private boolean isCurrentImageLoaded = false;  // 当前图片是否加载完成
-    private int maxLoadWaitTime = 5000;  // 最大等待时间 5 秒（避免永久等待）
-
+    private ClipPagerAdapter adapter;
+    private boolean isCurrentClipLoaded = false;  // 当前图片是否加载完成
+    private int maxLoadWaitTime = 6000;  // 最大等待时间
+    private final List<SimpleExoPlayer> preloadPlayers = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -110,14 +134,33 @@ public class PostDetailActivity extends AppCompatActivity {
         ChangeBounds changeBounds = new ChangeBounds();
         changeBounds.setDuration(300);
         getWindow().setSharedElementEnterTransition(changeBounds);
-        getWindow().setSharedElementReturnTransition(changeBounds); // ← 注意是 Return
+        getWindow().setSharedElementReturnTransition(changeBounds);
 
         // 背景淡入淡出
         Fade fade = new Fade();
         fade.setDuration(250);
         getWindow().setEnterTransition(fade);
-        getWindow().setReturnTransition(fade); // ← 注意是 Return
+        getWindow().setReturnTransition(fade);
         setContentView(R.layout.activity_work_detail);
+        setupBackPressHandler();
+        // 初始化侧滑
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public void onLongPress(MotionEvent e) {
+                float x = e.getRawX();
+                if (x < dpToPx(60) && isSwipeEnabled && !isSwipeGestureActive) {
+                    isSwipeGestureActive = true;
+                    isLongPressSwipeMode = true;
+                    startX = x;
+                    startY = e.getRawY();
+                    dimOverlay.setVisibility(View.VISIBLE);
+                    viewPagerImages.setUserInputEnabled(false);   // 禁用 ViewPager2 滑动
+                    android.util.Log.d("SwipeBack", "长按左边缘激活侧滑");
+                    getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                }
+            }
+        });
+        setupSwipeBack();
         likeManager = new LikeManager(this);
         followManager = new FollowManager(this);
         musicStateManager = MusicStateManager.getInstance();  //  获取全局状态管理器
@@ -127,6 +170,90 @@ public class PostDetailActivity extends AppCompatActivity {
         initViews();
         bindDataToUI();
         setupClickListeners();
+    }
+    private void setupSwipeBack() {
+        rootView = findViewById(R.id.root_container);
+
+        // 创建蒙层
+        dimOverlay = new View(this);
+        dimOverlay.setBackgroundColor(0x80000000);
+        dimOverlay.setVisibility(View.GONE);
+
+        ViewGroup decorView = (ViewGroup) getWindow().getDecorView();
+        decorView.addView(dimOverlay, 0, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+    }
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
+        // 如果侧滑手势已激活，优先处理
+        if (isSwipeGestureActive) {
+            handleSwipeTouch(event);
+            return true;
+        }
+
+
+        // 默认处理
+        return super.dispatchTouchEvent(event);
+    }
+
+    /**
+     * 处理滑动手势
+     */
+    private void handleSwipeTouch(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_MOVE:
+                float currentX = event.getRawX();
+                float deltaX = currentX - startX;
+
+                // 只允许向右滑动
+                if (deltaX > 0) {
+                    // 计算进度（0 ~ 1）
+                    float progress = Math.min(deltaX / getScreenWidth(), 1f);
+
+                    float scaleFactor = progress < 0.5f ? 0.3f : 0.15f;
+                    float scale = 1f - (scaleFactor * progress);
+
+                    // 应用变换
+                    rootView.setTranslationX(deltaX);
+                    rootView.setScaleX(scale);
+                    rootView.setScaleY(scale);
+
+                    // 蒙层透明度
+                    float alpha = 1f - progress;
+                    dimOverlay.setAlpha(alpha);
+
+                    rootView.setTranslationZ(16f * progress); // 添加阴影深度
+
+                    android.util.Log.d("SwipeBack", "滑动: Δx=" + (int)deltaX +
+                            ", progress=" + String.format("%.2f", progress) +
+                            ", scale=" + String.format("%.2f", scale));
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (isSwipeGestureActive) {
+                    float totalDeltaX = event.getRawX() - startX;
+
+                    android.util.Log.d("SwipeBack", "松手: totalDeltaX=" + totalDeltaX + ", threshold=" + dpToPx(SWIPE_THRESHOLD));
+
+                    // 判断是否触发退出
+                    if (totalDeltaX > dpToPx(SWIPE_THRESHOLD)) {
+                        // 完成退出动画
+                        animateFinish();
+                    } else {
+                        // 回弹
+                        animateBack();
+                    }
+                    isSwipeGestureActive = false;
+                    isLongPressSwipeMode = false;
+                    viewPagerImages.setUserInputEnabled(true);
+                }
+                break;
+        }
     }
     private void initViews(){
         btnBack = findViewById(R.id.btn_back);
@@ -143,11 +270,11 @@ public class PostDetailActivity extends AppCompatActivity {
         layoutIndicator = findViewById(R.id.layout_indicator);
 
         ivVolume = findViewById(R.id.iv_volume);
-
+        volumeContainer = findViewById(R.id.volume_container);
         layoutLike = findViewById(R.id.layout_like);
         layoutCollect = findViewById(R.id.layout_collect);
         layoutComment = findViewById(R.id.layout_comment);
-        layoutShare = findViewById(R.id.layout_share);  // ✅ 添加这行
+        layoutShare = findViewById(R.id.layout_share);
         ivLike = findViewById(R.id.iv_like);
 
         tvLikeCount = findViewById(R.id.tv_like_count);
@@ -157,7 +284,7 @@ public class PostDetailActivity extends AppCompatActivity {
     }
     private void loadIntentData(){
         String postId = getIntent().getStringExtra("post_id");
-        // ✅ 添加空值检查
+        //空值检查
         if (postId == null || postId.isEmpty()) {
             Toast.makeText(this, "作品ID无效", Toast.LENGTH_SHORT).show();
             finish();
@@ -165,7 +292,7 @@ public class PostDetailActivity extends AppCompatActivity {
         }
         post = DataManager.getInstance().getPostById(postId);
         if (post == null) {
-            // 降级方案：显示加载失败
+            // 显示加载失败
             Toast.makeText(this, "作品数据已过期", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -182,7 +309,7 @@ public class PostDetailActivity extends AppCompatActivity {
                     .into(ivAvatar);
         }
 
-        // 标题（使用 Post 的便捷方法）
+        // 标题
         if (post.getTitle()!=null&& !post.getTitle().isEmpty()) {
             tvTitle.setVisibility(View.VISIBLE);
             tvTitle.setText(post.getTitle());
@@ -197,21 +324,18 @@ public class PostDetailActivity extends AppCompatActivity {
         tvDate.setText(DateFormatter.formatDate(post.getCreateTime()));
 
         // 图片
-        setupImages();
+        setupClips();
         // 预加载前几张图片
-        preloadInitialImages();
+        preloadInitialClips();
         // 检查是否有音频
         Music music = post.getMusic();
         hasMusic = (music != null && music.getUrl() != null && !music.getUrl().isEmpty());
-// ✅ 关键修改:只有多图或有音频时才显示音频图标
-        if (totalImageCount > 1||hasMusic) {
-            ivVolume.setVisibility(View.VISIBLE);
+        if (totalClipCount > 1||hasMusic) {
+            volumeContainer.setVisibility(View.VISIBLE);
             if (hasMusic) {
-                // 有音频:初始化播放器
                 initAndPlayMusic(music);
             }
-
-            // 更新UI(有音频显示音量图标,无音频显示播放/暂停图标)
+            // 更新UI
             updateVolumeUI();
 
             // 如果未静音,开始自动轮播
@@ -220,26 +344,11 @@ public class PostDetailActivity extends AppCompatActivity {
             }
 
         } else {
-            // ✅
-            ivVolume.setVisibility(View.GONE);
+            volumeContainer.setVisibility(View.GONE);
             hasMusic = false;
         }
-//// ✅ 有音频时才初始化并播放
-//        Music music = post.getMusic();
-//        if (music != null && music.getUrl() != null && !music.getUrl().isEmpty()) {
-//            ivVolume.setVisibility(View.VISIBLE);
-//            // ✅ 立即设置静音图标（不等异步加载）
-////            isMuted = true;
-//            hasMusic = true;
-//            ivVolume.setVisibility(View.VISIBLE);
-//            updateVolumeUI();
-//            initAndPlayMusic(music);  // 懒加载
-//        } else {
-//            hasMusic = false;
-//            ivVolume.setVisibility(View.GONE);
-//        }
 
-        // 点赞数（来自 LikeCountGenerator）
+        // 点赞数
         int baseLike = LikeCountGenerator.generateLikeCount(post.getPostId());
         boolean liked = likeManager.isActive(post.getPostId());
         tvLikeCount.setText(String.valueOf(liked ? baseLike + 1 : baseLike));
@@ -247,87 +356,145 @@ public class PostDetailActivity extends AppCompatActivity {
         boolean  followed = followManager.isActive(post.getPostId());
         updateFollowUI(followed);
 
-        // 评论 & 收藏伪随机（根据 postId）
+        // 评论 收藏伪随机
         tvCommentCount.setText(String.valueOf(CommentCountGenerator.generate(post.getPostId())));
         tvCollectCount.setText(String.valueOf(CollectCountGenerator.generate(post.getPostId())));
         tvShareCount.setText(String.valueOf(ShareCountGenerator.generate(post.getPostId())));
     }
-    private void preloadInitialImages() {
+    private void preloadInitialClips() {
         if (post.getClips() == null || post.getClips().isEmpty()) return;
 
         List<Clip> clips = post.getClips();
         int preloadCount = Math.min(3, clips.size());
 
         for (int i = 0; i < preloadCount; i++) {
-            String imageUrl = clips.get(i).getUrl();
-            Glide.with(this)
-                    .load(imageUrl)
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .preload();
+            Clip clip = clips.get(i);
+            if (clip.getType() == 0) {
+                // 图片用 Glide 预加载
+                Glide.with(this)
+                        .load(clip.getUrl())
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .preload();
+            } else {
+                // 视频用 ExoPlayer
+                SimpleExoPlayer preloadPlayer = new SimpleExoPlayer.Builder(this).build();
+                preloadPlayer.setMediaItem(MediaItem.fromUri(clip.getUrl()));
+                preloadPlayer.prepare();
+                preloadPlayer.setPlayWhenReady(false);  // 不播放，只缓存
+                // 监听缓存进度
+                preloadPlayer.addListener(new Player.Listener() {
+                    @Override
+                    public void onPlaybackStateChanged(int playbackState) {
+                        if (playbackState == Player.STATE_READY) {
+                            long bufferedPosition = preloadPlayer.getBufferedPosition();
+                            long duration = preloadPlayer.getDuration();
+                            if (duration > 0) {
+                                float percent = bufferedPosition * 100f / duration;
+                                android.util.Log.d("VideoPreload",
+                                        String.format("视频预缓存完成 %.1f%%: %s", percent, clip.getUrl()));
+                            }
+                        }
+                    }
 
-            android.util.Log.d("ImagePreload", "预加载图片 " + i + ": " + imageUrl);
+                    @Override
+                    public void onPositionDiscontinuity(
+                            Player.PositionInfo oldPosition,
+                            Player.PositionInfo newPosition,
+                            int reason) {
+                        long buffered = preloadPlayer.getBufferedPosition();
+                        long duration = preloadPlayer.getDuration();
+                        if (duration > 0) {
+                            float percent = buffered * 100f / duration;
+                            android.util.Log.v("VideoPreload",
+                                    String.format("缓存进度: %.1f%%", percent));
+                        }
+                    }
+                });
+                preloadPlayers.add(preloadPlayer);
+                android.util.Log.d("Preload", "开始预加载视频: " + i + " " + clip.getUrl());
+            }
+
         }
 
     }
     /**
      * ✅ 预加载指定位置的图片
      */
-    private void preloadNextImage(int position) {
-        if (position < 0 || position >= totalImageCount) return;
+    private void preloadNextClip(int position) {
+        if (position < 0 || position >= totalClipCount) return;
 
-        List<Clip> clips = post.getClips();
-        String imageUrl = clips.get(position).getUrl();
+        Clip clip = post.getClips().get(position);
+        if (clip.getType() == 0) {
+            // 图片
+            Glide.with(this)
+                    .load(clip.getUrl())
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .preload();
+        } else {
+            // 视频：创建一个临时的 Player 进行预缓存
+            SimpleExoPlayer tempPlayer = new SimpleExoPlayer.Builder(this).build();
+            tempPlayer.setMediaItem(MediaItem.fromUri(clip.getUrl()));
+            tempPlayer.prepare();
+            tempPlayer.setPlayWhenReady(false);
+            tempPlayer.addListener(new Player.Listener() {
+                @Override
+                public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_READY) {
+                        android.util.Log.d("PreloadNext", "下一条视频预缓存完成: " + position);
+                        tempPlayer.release();
+                    }
+                }
+            });
 
-        Glide.with(this)
-                .load(imageUrl)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .preload();
+        }
 
-        android.util.Log.d("ImagePreload", "预加载下一张图片: " + position);
+        android.util.Log.d("PreloadNext", "预加载下一条: " + position + " type=" + clip.getType());
     }
-    // ✅ 懒加载初始化并播放音频
     private void initAndPlayMusic(Music music) {
-        // ✅ 先释放旧的 MediaPlayer
+        // 先释放旧的 MediaPlayer
         releaseMediaPlayer();
         try {
             android.util.Log.d("MediaPlayer", "📀 初始化音频: " + music.getUrl());
             // 1. 创建 MediaPlayer
             mediaPlayer = new MediaPlayer();
-            // ✅ 1. 设置音频流类型（必须在 setDataSource 之前）
+            // 1. 设置音频流类型
             mediaPlayer.setAudioAttributes(
                     new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build());
             // 2. 设置音频源
-            mediaPlayer.setDataSource(music.getUrl());
-            // ✅ 根据全局状态设置初始音量
+            if (music.getUrl().startsWith("file:///android_asset/")) {
+                String assetPath = music.getUrl().substring("file:///android_asset/".length());
+                AssetFileDescriptor afd = getAssets().openFd(assetPath);
+                mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                afd.close();
+                android.util.Log.d("MediaPlayer", "成功打开 assets 音频: " + assetPath);
+            } else {
+                mediaPlayer.setDataSource(music.getUrl());
+            }
+            // 根据全局状态设置初始音量
             boolean isMuted = musicStateManager.isMuted();
             if (isMuted) {
                 mediaPlayer.setVolume(0f, 0f);
-                android.util.Log.d("MediaPlayer", "🔇 初始化为静音");
+                android.util.Log.d("MediaPlayer", "初始化为静音");
             } else {
                 mediaPlayer.setVolume(1f, 1f);
-                android.util.Log.d("MediaPlayer", "🔊 初始化为有声");
+                android.util.Log.d("MediaPlayer", "初始化为有声");
             }
-//            // 3. 设置音量
-//            float volume = music.getVolume() / 100f;  // 假设 volume 是 0-100
-//            mediaPlayer.setVolume(volume, volume);
-//            // ✅ 默认静音启动
-//            mediaPlayer.setVolume(0f, 0f);
             // 4. 设置循环播放
             mediaPlayer.setLooping(true);
-            // 重置准备标志
+            // 5.重置准备标志
             isMediaPrepared = false;
 
             // 6. 准备完成后自动播放
             mediaPlayer.setOnPreparedListener(mp -> {
                 isMediaPrepared = true;
                 if (!isFinishing() && !isDestroyed()) {
-                    if (!isMuted) {  // 仅在非静音时启动
+                    if (!isMuted) {
                         mp.start();
                     }
-                    android.util.Log.d("MediaPlayer", "✅ 开始播放");
+                    android.util.Log.d("MediaPlayer", "开始播放");
                 }
             });
 
@@ -338,9 +505,9 @@ public class PostDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, "音频播放失败", Toast.LENGTH_SHORT).show();
                 return true;
             });
-            // 5. 异步准备（推荐，不会阻塞 UI）
+            // 5. 异步准备
             mediaPlayer.prepareAsync();
-            android.util.Log.d("MediaPlayer", "⏳ 开始异步准备...");
+            android.util.Log.d("MediaPlayer", "开始异步准备...");
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "音频加载失败", Toast.LENGTH_SHORT).show();
@@ -354,7 +521,7 @@ public class PostDetailActivity extends AppCompatActivity {
             int start = content.indexOf("#", index);
             if (start == -1) break;
 
-            // 找到话题词结束位置（遇到空格、#号或结尾）
+            // 找到话题词结束位置
             int end = start + 1;
             while (end < content.length()) {
                 char c = content.charAt(end);
@@ -380,7 +547,7 @@ public class PostDetailActivity extends AppCompatActivity {
                 public void updateDrawState(@NonNull android.text.TextPaint ds) {
                     super.updateDrawState(ds);
 
-                    ds.setColor(Color.BLUE); // 普蓝色
+                    ds.setColor(Color.parseColor("#04498D")); // 普蓝色
                     ds.setUnderlineText(false); // 去除下划线
                 }
             };
@@ -391,53 +558,60 @@ public class PostDetailActivity extends AppCompatActivity {
 
         tvContent.setText(spannableString);
         tvContent.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
-        // 防止点击话题词时背景高亮
         tvContent.setHighlightColor(android.graphics.Color.TRANSPARENT);
     }
     private void openHashtagPage(String hashtagText) {
         Intent intent = new Intent(this, HashtagActivity.class);
         intent.putExtra("hashtag", hashtagText);
         startActivity(intent);
-        // 设置横滑动画（从右到左）
+        // 设置横滑动画
         overridePendingTransition(R.anim.slide_in_right, R.anim.no_animation);
     }
 
-    //kexinf?
-    private void setupImages() {
+    private void setupClips() {
         List<Clip> clips = post.getClips();
         if (clips == null || clips.isEmpty()) return;
-        totalImageCount = clips.size();
-        List<String> urls = clips.stream().map(Clip::getUrl).collect(java.util.stream.Collectors.toList());
-        // 显示加载状态
-        pbImageLoading.setVisibility(View.VISIBLE);
+        totalClipCount = clips.size();
 
-        // 动态计算首图比例并设置 ViewPager 高度（关键：必须先设置高度）
-        adjustViewPagerHeight(urls.get(0));
-        int containerHeight = viewPagerImages.getLayoutParams().height;
-        ImagePagerAdapter adapter = new ImagePagerAdapter(this, urls, containerHeight);
-        // ✅ 设置图片加载监听
-        adapter.setOnImageLoadListener(new ImagePagerAdapter.OnImageLoadListener() {
+        // 动态计算首片段比例并设置 ViewPager 高度
+        adjustViewPagerHeight(clips.get(0));
+        adapter = new ClipPagerAdapter(this, clips);
+        // 设置片段加载监听
+        adapter.setOnClipLoadListener((position, success) -> {
+            android.util.Log.d("ClipLoad", "片段 " + position + (success ? " 加载成功" : " 加载失败"));
+
+            // 只有当前显示的片段加载完成才标记
+            if (position == viewPagerImages.getCurrentItem()) {
+                isCurrentClipLoaded = success;
+                android.util.Log.d("AutoPlay", "当前片段 " + position + " 加载状态: " + (success ? "成功" : "失败"));
+            }
+        });
+        // 设置视频播放监听
+        adapter.setOnVideoPlayListener(new ClipPagerAdapter.OnVideoPlayListener() {
             @Override
-            public void onImageLoaded(int position, boolean success) {
-                android.util.Log.d("ImageLoad", "图片 " + position + (success ? " ✅ 加载成功" : " ❌ 加载失败"));
+            public void onVideoStart(int position) {
+                // 视频开始：暂停背景音乐
+                pauseMusicIfNeeded();
+            }
 
-                // 只有当前显示的图片加载完成才标记
-                if (position == viewPagerImages.getCurrentItem()) {
-                    isCurrentImageLoaded = success;
-                    android.util.Log.d("AutoPlay", "当前图片 " + position + " 加载状态: " + (success ? "✅" : "❌"));
+            @Override
+            public void onVideoComplete(int position) {
+                android.util.Log.d("VideoCallback", "视频播放完成: " + position);
+
+                boolean isMuted = musicStateManager.isMuted();
+                android.util.Log.d("VideoCallback", "当前状态: isMuted=" + isMuted +
+                        ", currentItem=" + viewPagerImages.getCurrentItem());
+                if (!isMuted && position == viewPagerImages.getCurrentItem()) {
+                    int nextPosition = (position + 1) % totalClipCount;
+                    android.util.Log.d("VideoCallback", "🔄 自动切换到: " + nextPosition);
+
+                    viewPagerImages.postDelayed(() -> {
+                        viewPagerImages.setCurrentItem(nextPosition, true);
+                    }, 300); // 延迟切换，避免卡顿
                 }
             }
         });
         viewPagerImages.setAdapter(adapter);
-        // ✅ 延迟绑定共享元素（等待首图加载）
-        viewPagerImages.post(() -> {
-            View currentImageView = getCurrentImageView();
-            if (currentImageView != null) {
-                ViewCompat.setTransitionName(currentImageView, "shared_image");
-            }
-        });
-        // 图片加载完成后隐藏加载状态
-        pbImageLoading.setVisibility(View.GONE);
         // 设置进度条
         if (clips.size() > 1) {
             setupIndicators(clips.size());
@@ -445,29 +619,52 @@ public class PostDetailActivity extends AppCompatActivity {
         } else {
             layoutIndicator.setVisibility(View.GONE);
         }
-        // ✅ 第一张图片默认已加载（因为已经显示）
-        isCurrentImageLoaded = true;
-    }
-    // 获取ViewPager2当前显示的ImageView
-    private View getCurrentImageView() {
-        RecyclerView recyclerView = (RecyclerView) viewPagerImages.getChildAt(0);
-        if (recyclerView == null) return null;
+        // 第一片段默认已加载
+        isCurrentClipLoaded = true;
+        viewPagerImages.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                updateIndicators(position);
+                preloadNextClip((position + 1) % totalClipCount);
 
-        RecyclerView.ViewHolder holder = recyclerView
-                .findViewHolderForAdapterPosition(viewPagerImages.getCurrentItem());
+                viewPagerImages.postDelayed(() -> {
+                    adjustMediaForCurrentClip();
+                }, 150); // 150ms 足够视图创建完成
 
-        if (holder != null) {
-            return holder.itemView.findViewById(R.id.iv_image); // 替换为你的ImageView ID
-        }
-        return null;
+                // 重启图片轮播计时器
+                if (!musicStateManager.isMuted()) {
+                    Clip clip = post.getClips().get(position);
+                    if (clip.getType() == 0) {
+                        stopAutoPlay();
+                        startAutoPlay();
+                    }
+                }
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+                if (state == ViewPager2.SCROLL_STATE_DRAGGING) {
+                    isUserScrolling = true;
+                    stopAutoPlay();
+                } else if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                    isUserScrolling = false;
+                    if (!musicStateManager.isMuted()) {
+                        // 延迟启动，避免和 onPageSelected 冲突
+                        viewPagerImages.postDelayed(() -> {
+                            if (!isAutoPlaying) {
+                                startAutoPlay();
+                            }
+                        }, 200);
+                    }
+                }
+            }
+        });
     }
-    private void adjustViewPagerHeight(String firstImageUrl) {
+    private void adjustViewPagerHeight(Clip firstClip) {
         // 如果图片列表为空，使用默认高度
         if (post.getClips() == null || post.getClips().isEmpty()) {
             return;
         }
-        Clip firstClip = post.getClips().get(0);
-        // 方案1：使用真实图片尺寸（推荐）
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         int targetHeight;
         if (firstClip.getWidth() > 0 && firstClip.getHeight() > 0) {
@@ -478,7 +675,6 @@ public class PostDetailActivity extends AppCompatActivity {
                     screenWidth
             );
         } else {
-            // 获取不到宽高 → fallback：强制 3:4
             targetHeight = (int) (screenWidth * 4f / 3f);
         }
 
@@ -511,18 +707,13 @@ public class PostDetailActivity extends AppCompatActivity {
             );
             params.setMargins(4, 0, 4, 0);
             indicator.setLayoutParams(params);
-            indicator.setBackgroundColor(i == 0 ?
-                    Color.parseColor("#FFFFFF") :
-                    Color.parseColor("#66FFFFFF"));
+            if (i == 0) {
+                indicator.setBackgroundResource(R.drawable.bg_indicator_active);
+            } else {
+                indicator.setBackgroundResource(R.drawable.bg_indicator_item);
+            }
             layoutIndicator.addView(indicator);
         }
-        // ViewPager 切换监听
-        viewPagerImages.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
-                updateIndicators(position);
-            }
-        });
     }
     /**
      * 更新进度条状态
@@ -530,9 +721,11 @@ public class PostDetailActivity extends AppCompatActivity {
     private void updateIndicators(int position) {
         for (int i = 0; i < layoutIndicator.getChildCount(); i++) {
             View indicator = layoutIndicator.getChildAt(i);
-            indicator.setBackgroundColor(i == position ?
-                    Color.parseColor("#FFFFFF") :
-                    Color.parseColor("#66FFFFFF"));
+            if (i == position) {
+                indicator.setBackgroundResource(R.drawable.bg_indicator_active);
+            } else {
+                indicator.setBackgroundResource(R.drawable.bg_indicator_item);
+            }
         }
     }
     private void updateVolumeUI() {
@@ -562,7 +755,7 @@ public class PostDetailActivity extends AppCompatActivity {
         });
 
         layoutCollect.setOnClickListener(v -> {
-            // TODO: 收藏状态管理（你可以加 CollectStateManager）
+            // TODO: 收藏状态管理
         });
 
         layoutComment.setOnClickListener(v -> {
@@ -582,124 +775,192 @@ public class PostDetailActivity extends AppCompatActivity {
     /**
      * 切换音量
      */
-//    private void toggleVolume() {
-//        if (mediaPlayer == null) return;
-//        isMuted = !isMuted;
-//
-//        if (mediaPlayer != null) {
-//            if (isMuted) {
-//                mediaPlayer.setVolume(0f, 0f);
-//            } else {
-//                mediaPlayer.setVolume(1f,1f);
-//            }
-//        }
-//        updateVolumeUI();
-//        Toast.makeText(this, isMuted ? "已静音" : "已开启声音", Toast.LENGTH_SHORT).show();
-//    }
     private void toggleVolume() {
         // 切换全局状态
         boolean newMutedState = musicStateManager.toggleMuted();
+        // 获取当前片段类型
+        int position = viewPagerImages.getCurrentItem();
+        Clip currentClip = post.getClips().get(position);
 
-        // 1. 控制音频(如果有)
-        if (hasMusic && mediaPlayer != null) {
-            try {
-                if (newMutedState) {
-                    mediaPlayer.setVolume(0f, 0f);
-                } else {
-                    mediaPlayer.setVolume(1f, 1f);
-                    if (!mediaPlayer.isPlaying()&& isMediaPrepared) {
+        // 1. 根据片段类型更新媒体状态
+        if (currentClip.getType() == 1) {
+            SimpleExoPlayer player = getCurrentPlayer();
+            if (player != null) {
+                player.setVolume(newMutedState ? 0f : 1f);
+                player.setRepeatMode(newMutedState ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+                android.util.Log.d("VolumeToggle", "视频页切换音量，保持当前位置: " + player.getCurrentPosition());
+            }
+        } else {
+            if (hasMusic && mediaPlayer != null) {
+                try {
+                    mediaPlayer.setVolume(newMutedState ? 0f : 1f, newMutedState ? 0f : 1f);
+                    if (!newMutedState && isMediaPrepared && !mediaPlayer.isPlaying()) {
                         mediaPlayer.start();
+                        android.util.Log.d("VolumeToggle", "图片页开启BGM");
                     }
+                } catch (Exception e) {
+                    android.util.Log.e("VolumeToggle", "BGM控制失败", e);
                 }
-            } catch (IllegalStateException e) {
-                android.util.Log.e("MediaPlayer", "切换音量失败", e);
             }
         }
 
         // 2. 控制轮播(多图时)
-        if (totalImageCount > 1) {
+        if (totalClipCount > 1) {
             if (newMutedState) {
                 // 静音 = 停止轮播
                 stopAutoPlay();
-
-                String msg = hasMusic ? "🔇 已静音并暂停轮播" : "⏸️ 已暂停轮播";
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
             } else {
                 // 开启声音 = 开始轮播
                 startAutoPlay();
-
-                String msg = hasMusic ? "🔊 已开启声音并开始轮播" : "▶️ 已开始轮播";
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
             }
         }
 
         // 更新 UI
         updateVolumeUI();
     }
+
+    private void adjustMediaForCurrentClip() {
+        int position = viewPagerImages.getCurrentItem();
+        Clip currentClip = post.getClips().get(position);
+        boolean isMuted = musicStateManager.isMuted();
+
+        if (currentClip.getType() == 1) { // 视频
+            // 更新视频player的volume和repeat
+            SimpleExoPlayer player = getCurrentPlayer();
+            if (player != null) {
+                player.setVolume(isMuted ? 0f : 1f);
+                player.setRepeatMode(isMuted ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+                int playbackState = player.getPlaybackState();
+                if (playbackState == Player.STATE_IDLE) {
+                    player.prepare();
+                    player.seekTo(0);
+                    player.setPlayWhenReady(true);
+                    android.util.Log.d("VideoFix", "播放器未初始化，prepare 后从头播放");
+
+                } else if (playbackState == Player.STATE_ENDED) {
+                    player.seekTo(0);
+                    player.setPlayWhenReady(true);
+                    android.util.Log.d("VideoFix", "播放已结束，重置到开头");
+
+                } else {
+                    // 播放器正常状态
+                    player.seekTo(0);
+                    player.setPlayWhenReady(true);
+                    android.util.Log.d("VideoFix", "正常状态，从头播放");
+                }
+            }
+            // 暂停 BGM
+            if (hasMusic && mediaPlayer != null && mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
+                android.util.Log.d("MediaControl", "暂停BGM");
+            }
+        } else { // 图片
+            if (hasMusic && mediaPlayer != null) {
+                try {
+                    mediaPlayer.setVolume(isMuted ? 0f : 1f, isMuted ? 0f : 1f);
+                    if (!isMuted && isMediaPrepared && !mediaPlayer.isPlaying()) {
+                        mediaPlayer.start();
+                        android.util.Log.d("MediaControl", "图片页恢复 BGM");
+                    }
+                }catch (Exception e) {
+                    android.util.Log.e("MediaControl", "BGM 恢复失败，重新初始化", e);
+                    if (post.getMusic() != null) initAndPlayMusic(post.getMusic());
+                }
+            }
+        }
+    }
+    private SimpleExoPlayer getCurrentPlayer() {
+        try {
+            RecyclerView recyclerView = (RecyclerView) viewPagerImages.getChildAt(0);
+            if (recyclerView == null) return null;
+
+            RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(viewPagerImages.getCurrentItem());
+            if (holder instanceof ClipPagerAdapter.ClipViewHolder) {
+                return ((ClipPagerAdapter.ClipViewHolder) holder).player;
+            }
+            return null;
+        } catch (Exception e) {
+            android.util.Log.e("GetPlayer", "获取播放器失败", e);
+            return null;
+        }
+    }
+    private void pauseMusicIfNeeded() {
+        if (hasMusic && mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
     /**
      * 开始自动轮播
      */
     private void startAutoPlay() {
-        // ✅ 检查条件：多图 + 未静音
-        if (totalImageCount <= 1 || musicStateManager.isMuted()) {
-            android.util.Log.d("AutoPlay", "❌ 不满足轮播条件（单图或已静音）");
+        if (totalClipCount <= 1 || musicStateManager.isMuted()) {
+            android.util.Log.d("AutoPlay", "不满足轮播条件");
             return;
         }
-        // ✅ 简化：如果已在轮播，直接返回（避免重复启动）
         if (isAutoPlaying) {
-            android.util.Log.d("AutoPlay", "⚠️ 轮播已在运行");
+            android.util.Log.d("AutoPlay", "轮播已在运行");
+            return;
+        }
+        int position = viewPagerImages.getCurrentItem();
+        Clip currentClip = post.getClips().get(position);
+        if (currentClip.getType() == 1) {
+            isAutoPlaying = true; // 标记为轮播中
             return;
         }
         isAutoPlaying = true;
-        android.util.Log.d("AutoPlay", "▶️ 开始自动轮播");
+        android.util.Log.d("AutoPlay", "开始自动轮播");
 
         autoPlayRunnable = new Runnable() {
             private long startWaitTime = 0;  // 记录开始等待的时间
             @Override
             public void run() {
-                if (musicStateManager.isMuted() || isUserScrolling || totalImageCount <= 1)  {
+                if (musicStateManager.isMuted() || isUserScrolling || totalClipCount <= 1)  {
                     isAutoPlaying = false;
-                    android.util.Log.d("AutoPlay", "⏸️ 检测到停止条件");
+                    android.util.Log.d("AutoPlay", "检测到停止条件");
                     return;
                 }
-                if (!isCurrentImageLoaded) {
+                if (!isCurrentClipLoaded) {
                     // 初始化等待时间
                     if (startWaitTime == 0) {
                         startWaitTime = System.currentTimeMillis();
-                        android.util.Log.d("AutoPlay", "⏳ 开始等待图片加载...");
+                        android.util.Log.d("AutoPlay", "开始等待图片加载...");
                     }
 
                     long waitedTime = System.currentTimeMillis() - startWaitTime;
 
-                    // 如果等待时间超过最大限制，强制切换（避免卡住）
+                    // 如果等待时间超过最大限制，强制切换
                     if (waitedTime > maxLoadWaitTime) {
-                        android.util.Log.w("AutoPlay", "⚠️ 图片加载超时（" + waitedTime + "ms），强制切换");
-                        isCurrentImageLoaded = true;  // 强制标记为已加载
+                        android.util.Log.w("AutoPlay", "图片加载超时（" + waitedTime + "ms），强制切换");
+                        isCurrentClipLoaded = true;  // 强制标记为已加载
                         startWaitTime = 0;
                     } else {
                         // 继续等待，500ms 后再检查
-                        android.util.Log.d("AutoPlay", "⏳ 等待中... 已等待 " + waitedTime + "ms");
+                        android.util.Log.d("AutoPlay", "等待中... 已等待 " + waitedTime + "ms");
                         autoPlayHandler.postDelayed(this, 500);
                         return;
                     }
                 }
 
                 int currentPosition = viewPagerImages.getCurrentItem();
-                int nextPosition = (currentPosition + 1) % totalImageCount;
-                android.util.Log.d("AutoPlay", "🔄 切换: " + currentPosition + " → " + nextPosition);
+                int nextPosition = (currentPosition + 1) % totalClipCount;
+                android.util.Log.d("AutoPlay", "切换: " + currentPosition + " → " + nextPosition);
 
-                // ✅ 预加载下一张（提前加载 nextPosition + 1）
-                int preloadPosition = (nextPosition + 1) % totalImageCount;
-                preloadNextImage(preloadPosition);
+                // 预加载下一张
+                int preloadPosition = (nextPosition + 1) % totalClipCount;
+                preloadNextClip(preloadPosition);
 
                 // 切换前重置状态
-                isCurrentImageLoaded = false;
+                isCurrentClipLoaded = false;
                 startWaitTime = 0;
                 viewPagerImages.setCurrentItem(nextPosition, true);
-                autoPlayHandler.postDelayed(this, AUTO_PLAY_INTERVAL);
+                Clip nextClip = post.getClips().get(nextPosition);
+                if (nextClip.getType() == 1) {
+                    android.util.Log.d("AutoPlay", "下一个是视频，暂停定时器");
+                } else {
+                    autoPlayHandler.postDelayed(this, AUTO_PLAY_INTERVAL);
+                }
             }
         };
-
         autoPlayHandler.postDelayed(autoPlayRunnable, AUTO_PLAY_INTERVAL);
     }
 
@@ -717,7 +978,7 @@ public class PostDetailActivity extends AppCompatActivity {
             autoPlayHandler.removeCallbacks(autoPlayRunnable);
         }
 
-        android.util.Log.d("AutoPlay", "⏸️ 停止自动轮播");
+        android.util.Log.d("AutoPlay", "停止自动轮播");
     }
     private void updateLikeUI(boolean isLiked){
         if(isLiked){
@@ -738,13 +999,18 @@ public class PostDetailActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        android.util.Log.d("MediaPlayer", "⏸️ onPause - 暂停播放");
+        android.util.Log.d("MediaPlayer", "onPause - 暂停播放");
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             try {
                 mediaPlayer.pause();
             } catch (Exception e) {
                 android.util.Log.e("MediaPlayer", "暂停失败", e);
             }
+        }
+        SimpleExoPlayer player = getCurrentPlayer();
+        if (player != null && player.isPlaying()) {
+            player.setPlayWhenReady(false);  // 暂停
+            android.util.Log.d("VideoPlayer", "已暂停视频，当前位置: " + player.getCurrentPosition());
         }
         // 停止轮播
         stopAutoPlay();
@@ -754,40 +1020,60 @@ public class PostDetailActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         android.util.Log.d("MediaPlayer", "▶️ onResume");
-        // ✅ 修复：只有在已暂停且未静音时才恢复播放
-        if (hasMusic && mediaPlayer != null) {
-            try {
-                boolean isMuted = musicStateManager.isMuted();
-                // 检查状态：只在 Paused 状态才能 start()
-                if (!mediaPlayer.isPlaying() && !isMuted&& isMediaPrepared) {
+
+        // 恢复轮播
+        if (!musicStateManager.isMuted() && totalClipCount > 1) {
+            startAutoPlay();
+        }
+        // 恢复当前媒体播放
+        int position = viewPagerImages.getCurrentItem();
+        Clip currentClip = post.getClips().get(position);
+        boolean isMuted = musicStateManager.isMuted();
+
+        if (currentClip.getType() == 1) {
+            // 视频：从暂停位置继续播放
+            SimpleExoPlayer player = getCurrentPlayer();
+            if (player != null) {
+                player.setVolume(isMuted ? 0f : 1f);
+                player.setRepeatMode(isMuted ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+                player.setPlayWhenReady(true);  // 继续播放
+                android.util.Log.d("VideoPlayer", "从暂停位置恢复视频播放");
+            }
+        } else {
+            // 图片：恢复 BGM
+            if (hasMusic && mediaPlayer != null && !isMuted && isMediaPrepared) {
+                try {
                     mediaPlayer.start();
-                    android.util.Log.d("MediaPlayer", "恢复播放");
-                }else if (!isMediaPrepared) {
-                    android.util.Log.d("MediaPlayer", "准备中，等待OnPreparedListener启动");
-                }
-            } catch (IllegalStateException e) {
-                android.util.Log.e("MediaPlayer", "恢复播放失败: " + e.getMessage());
-                // 状态错误时重新初始化
-                if (post != null && post.getMusic() != null) {
-                    initAndPlayMusic(post.getMusic());
+                    android.util.Log.d("MediaPlayer", "恢复 BGM 播放");
+                } catch (Exception e) {
+                    android.util.Log.e("MediaPlayer", "恢复失败", e);
                 }
             }
-        }
-        // 恢复轮播
-        if (!musicStateManager.isMuted() && totalImageCount > 1) {
-            startAutoPlay();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        for (SimpleExoPlayer player : preloadPlayers) {
+            if (player != null) {
+                try {
+                    player.release();
+                } catch (Exception e) {
+                    android.util.Log.e("Lifecycle", "释放预加载播放器失败", e);
+                }
+            }
+        }
+        preloadPlayers.clear();
         // 清理轮播
         stopAutoPlay();
         if (autoPlayHandler != null) {
             autoPlayHandler.removeCallbacksAndMessages(null);
         }
         releaseMediaPlayer();
+        if (dimOverlay != null && dimOverlay.getParent() != null) {
+            ((ViewGroup) dimOverlay.getParent()).removeView(dimOverlay);
+        }
     }
 
     private void releaseMediaPlayer() {
@@ -805,10 +1091,96 @@ public class PostDetailActivity extends AppCompatActivity {
             }
         }
     }
-    @Override
-    public void onBackPressed() {
-        // 设置退出动画（从左到右）
-        finishAfterTransition();
+    private void animateFinish() {
+        android.util.Log.d("SwipeBack", "执行退出动画");
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+        animator.setDuration(250);
+
+        float startTranslationX = rootView.getTranslationX();
+        float startScale = rootView.getScaleX();
+        float startAlpha = dimOverlay.getAlpha();
+
+        animator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+
+            // 继续滑动到屏幕外
+            rootView.setTranslationX(startTranslationX + (getScreenWidth() - startTranslationX) * progress);
+
+            // 继续缩小
+            float scale = startScale - (startScale - 0.7f) * progress;
+            rootView.setScaleX(scale);
+            rootView.setScaleY(scale);
+
+            // 蒙层完全消失
+            dimOverlay.setAlpha(startAlpha * (1 - progress));
+        });
+
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                finishAfterTransition();
+            }
+        });
+
+        animator.start();
+    }
+
+    /**
+     * 回弹动画
+     */
+    private void animateBack() {
+        android.util.Log.d("SwipeBack", "↩️ 执行回弹动画");
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+        animator.setDuration(250);
+
+        float startTranslationX = rootView.getTranslationX();
+        float startScale = rootView.getScaleX();
+        float startAlpha = dimOverlay.getAlpha();
+
+        animator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+
+            // 回到原位
+            rootView.setTranslationX(startTranslationX * (1 - progress));
+
+            // 恢复大小
+            float scale = startScale + (1f - startScale) * progress;
+            rootView.setScaleX(scale);
+            rootView.setScaleY(scale);
+
+            // 蒙层恢复
+            dimOverlay.setAlpha(startAlpha + (1f - startAlpha) * progress);
+        });
+
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                dimOverlay.setVisibility(View.GONE);
+                rootView.setTranslationZ(0); // 恢复阴影
+            }
+        });
+
+        animator.start();
+    }
+
+
+    private int getScreenWidth() {
+        return getResources().getDisplayMetrics().widthPixels;
+    }
+
+    private float dpToPx(float dp) {
+        return dp * getResources().getDisplayMetrics().density;
+    }
+    private void setupBackPressHandler() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // 执行共享元素返回动画
+                finishAfterTransition();
+            }
+        });
     }
 
 }

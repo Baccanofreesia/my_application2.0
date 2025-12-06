@@ -31,26 +31,19 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private RecyclerView recyclerView;
-    //新增-没看懂，需要复盘
     private SwipeRefreshLayout swipeRefresh;
     private ProgressBar pbLoading;
-//    //新增加载更多与空态页面
-//    private ProgressBar pbLoadMore;       // 加载更多Loading
-//    private LinearLayout llEmpty;         // 空态页面
     private PostAdapter adapter;
     private List<Post> posts = new ArrayList<>();
 
     private boolean isLoading = false;
     private boolean hasMore = true;
-    //新增是否首次加载
-//    private boolean isFirstLoad = true;   // 是否首次加载
-    //新增结束
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        // ✅ 加载Fragment布局
+        // 加载Fragment布局
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         initViews(view);
         setupRecyclerView();
@@ -59,14 +52,6 @@ public class HomeFragment extends Fragment {
         //首次加载数据
         loadData(true);
         return view;
-//        // 初始化RecyclerView
-//        recyclerView = view.findViewById(R.id.recycler_stagger);
-//        StaggeredGridLayoutManager layoutManager =
-//                new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL);
-//        recyclerView.setLayoutManager(layoutManager);
-//
-//        // TODO: 设置适配器
-//        // recyclerView.setAdapter(yourAdapter);
 
     }
     private void initViews(View view) {
@@ -101,7 +86,7 @@ public class HomeFragment extends Fragment {
                     if (lastVisiblePosition >= adapter.getItemCount() - 3) {
                         loadData(false);
                     }
-                    // 修改：独立预加载阈值，当滑动到倒数第5个item时，开始预加载后续图片
+                    // 独立预加载阈值，当滑动到倒数第5个item时，开始预加载后续图片
                     if (lastVisiblePosition >= adapter.getItemCount() - 5) {
                         int preloadStart = lastVisiblePosition + 1;
                         preloadImages(preloadStart, 5);  // 预加载后续5个帖子的图片
@@ -124,7 +109,7 @@ public class HomeFragment extends Fragment {
                 isLoading=false;
                 pbLoading.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                // ✅ 缓存加载的数据
+                // 缓存加载的数据
                 DataManager.getInstance().cachePosts(data.getPostList());
                 List<Post> newPosts = data.getPostList();
                 if(isRefresh){
@@ -132,7 +117,7 @@ public class HomeFragment extends Fragment {
                     preloadImages(0, 5);
                 }else{
                     adapter.addData(data.getPostList());
-                    // 新增：追加后预加载新批次的前5个帖子的图片
+                    // 追加后预加载新批次的前5个帖子的图片
                     int startPosition = posts.size() - newPosts.size();
                     preloadImages(startPosition, 5);
                 }
@@ -159,11 +144,6 @@ public class HomeFragment extends Fragment {
             }
         });
     }
-    /**
-     * 新增：预加载指定范围的帖子封面图片
-     * @param startPosition 开始位置
-     * @param count 预加载数量
-     */
     private void preloadImages(int startPosition, int count) {
         if (posts == null || posts.isEmpty()) return;
 
@@ -192,9 +172,6 @@ public class HomeFragment extends Fragment {
         Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_LONG).show();
     }
 
-    /**
-     * 获取数组最大值
-     */
     private int getMax(int[] array) {
         int max = array[0];
         for (int value : array) {

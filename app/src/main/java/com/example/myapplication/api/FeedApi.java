@@ -25,7 +25,7 @@ public class FeedApi {
     private static  final String TAG = "FeedApi";
     private static final String BASE_URL="https://college-training-camp.bytedance.com/feed/";
     private static final OkHttpClient client=new OkHttpClient.Builder()
-            .addInterceptor(new TimingInterceptor())//zhuyi
+            .addInterceptor(new TimingInterceptor())
             .build();
     private static final Gson gson=new Gson();
     private static final Handler mainHandler=new Handler(Looper.getMainLooper());

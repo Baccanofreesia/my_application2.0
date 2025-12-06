@@ -10,12 +10,7 @@ import android.view.animation.OvershootInterpolator;
  */
 public class AnimationUtils {
 
-    /**
-     * 点赞缩放动画（类似小红书）
-     * @param view 需要添加动画的View
-     */
     public static void playLikeAnimation(View view) {
-        // 第一阶段：放大到 1.3 倍
         ObjectAnimator scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1.0f, 1.3f);
         ObjectAnimator scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1.0f, 1.3f);
         scaleUpX.setDuration(150);  // 动画时长 150ms
@@ -24,7 +19,6 @@ public class AnimationUtils {
         AnimatorSet scaleUp = new AnimatorSet();
         scaleUp.playTogether(scaleUpX, scaleUpY);
 
-        // 第二阶段：回弹到 1.0 倍（带弹性效果）
         ObjectAnimator scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 1.3f, 1.0f);
         ObjectAnimator scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 1.3f, 1.0f);
         scaleDownX.setDuration(200);  // 动画时长 200ms
@@ -43,10 +37,6 @@ public class AnimationUtils {
         animatorSet.start();
     }
 
-    /**
-     * 取消点赞缩小动画
-     * @param view 需要添加动画的View
-     */
     public static void playUnlikeAnimation(View view) {
         // 轻微缩小效果
         ObjectAnimator scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 1.0f, 0.8f);
@@ -57,7 +47,6 @@ public class AnimationUtils {
         AnimatorSet scaleDown = new AnimatorSet();
         scaleDown.playTogether(scaleDownX, scaleDownY);
 
-        // 恢复正常大小
         ObjectAnimator scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 0.8f, 1.0f);
         ObjectAnimator scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 0.8f, 1.0f);
         scaleUpX.setDuration(100);

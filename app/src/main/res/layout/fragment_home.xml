@@ -5,99 +5,107 @@
     android:id="@+id/root_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
-
-    <!-- 顶部导航栏：均分布局 -->
+    android:background="@android:color/white"
+    >
+    <!-- 顶部导航栏-->
     <LinearLayout
         android:id="@+id/top_tabs"
         android:layout_width="0dp"
-        android:layout_height="48dp"
+        android:layout_height="44dp"
         android:orientation="horizontal"
-        android:gravity="center"
+        android:gravity="center_vertical"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:weightSum="6"
+        android:weightSum="5"
         android:paddingStart="10dp"
-        android:paddingEnd="10dp">
-
-        <!-- 每个 Tab 使用 weight=1 平分 -->
+        android:paddingEnd="12dp">
         <TextView
             android:id="@+id/tab_beijing"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="22dp"
             android:layout_weight="1"
             android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:text="北京"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp" />
-
+            android:textColor="#A6161823"
+            android:textSize="16sp"
+            android:fontFamily="@font/pingfangmedium"/>
         <TextView
             android:id="@+id/tab_tuangou"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="22dp"
             android:layout_weight="1"
             android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:text="团购"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp" />
-
+            android:textColor="#A6161823"
+            android:textSize="16sp"
+            android:fontFamily="@font/pingfangmedium"/>
         <TextView
             android:id="@+id/tab_guanzhu"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="22dp"
             android:layout_weight="1"
             android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:text="关注"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp" />
-
-        <!-- 社区：默认选中 -->
-        <LinearLayout
+            android:textColor="#A6161823"
+            android:textSize="16sp"
+            android:fontFamily="@font/pingfangmedium"/>
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/tab_community_container"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
+            android:layout_weight="1">
             <TextView
                 android:id="@+id/tab_community"
                 android:layout_width="wrap_content"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:gravity="center"
+                android:layout_height="22dp"
                 android:text="社区"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black"/>
-
+                android:gravity="center"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:fontFamily="@font/pingfangmedium"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
             <View
                 android:id="@+id/tab_community_underline"
-                android:layout_width="22dp"
-                android:layout_height="3dp"
-                android:background="@android:color/black"/>
-        </LinearLayout>
-
+                android:layout_width="24dp"
+                android:layout_height="2dp"
+                android:background="@drawable/tab_underline_bg"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginBottom="5dp" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
         <TextView
             android:id="@+id/tab_recommend"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="22dp"
             android:layout_weight="1"
             android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:text="推荐"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp" />
-
+            android:textColor="#A6161823"
+            android:textSize="16sp"
+            android:fontFamily="@font/pingfangmedium"/>
         <ImageView
             android:id="@+id/icon_search"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:padding="12dp"
-            android:src="@android:drawable/ic_menu_search"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:contentDescription="搜索"
-            android:scaleType="centerInside" />
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_search" />
     </LinearLayout>
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -112,21 +120,11 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/white"
-            android:padding="6dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="8dp"
             android:clipToPadding="false"/>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-<!--    &lt;!&ndash; 中间区域：双瀑布流 RecyclerView &ndash;&gt;-->
-<!--    <androidx.recyclerview.widget.RecyclerView-->
-<!--        android:id="@+id/recycler_stagger"-->
-<!--        android:layout_width="0dp"-->
-<!--        android:layout_height="0dp"-->
-<!--        android:background="@android:color/white"-->
-<!--        app:layout_constraintTop_toBottomOf="@id/top_tabs"-->
-<!--        app:layout_constraintBottom_toBottomOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        android:padding="6dp"/>-->
-
     <!-- Loading -->
     <ProgressBar
         android:id="@+id/pb_loading"
@@ -137,29 +135,4 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
-<!--    &lt;!&ndash; 空态页面 &ndash;&gt;-->
-<!--    <LinearLayout-->
-<!--        android:id="@+id/ll_empty"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="match_parent"-->
-<!--        android:layout_below="@id/ll_top_bar"-->
-<!--        android:orientation="vertical"-->
-<!--        android:gravity="center"-->
-<!--        android:visibility="gone">-->
-
-<!--        <TextView-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="😔"-->
-<!--            android:textSize="48sp"-->
-<!--            android:layout_marginBottom="16dp"/>-->
-
-<!--        <TextView-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="加载失败，请下拉重试"-->
-<!--            android:textSize="16sp"-->
-<!--            android:textColor="#999999"/>-->
-<!--    </LinearLayout>-->
-
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -134,7 +134,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 }
             });
             itemView.setOnClickListener(v->{
-                // ✅ 避免快速点击导致动画混乱
+                // 避免快速点击导致动画混乱
                 if (context instanceof Activity) {
                     Activity activity = (Activity) context;
                     if (activity.isFinishing() || activity.isDestroyed()) {
@@ -142,11 +142,12 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                     }
                 }
                 Intent intent=new Intent(context, PostDetailActivity.class);
-                // ✅ 点击时也缓存一次（确保最新）
+                //点击时也缓存一次
                 DataManager.getInstance().cachePost(post);
 
                 intent.putExtra("post_id", post.getPostId());
-                // ✅ 使用共享元素转场动画
+//                intent.putExtra("post_id", "TEST_VIDEO");//用于测试
+                //使用共享元素转场动画
                 if (context instanceof android.app.Activity) {
                     android.app.Activity activity = (android.app.Activity) context;
 

@@ -18,4 +18,12 @@ public class Author {
     public String getAvatar() {
         return avatar;
     }
+   //测试
+//    public void setNickname(String 测试君) {
+//        this.nickname = 测试君;
+//    }
+//
+//    public void setAvatar(String url) {
+//        this.avatar = url;
+//    }
 }

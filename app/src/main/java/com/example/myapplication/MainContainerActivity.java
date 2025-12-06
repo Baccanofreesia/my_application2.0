@@ -6,6 +6,8 @@ import android.util.TypedValue;
 import android.widget.TextView;
 import com.example.myapplication.fragment.HomeFragment;
 import com.example.myapplication.fragment.MeFragment;
+import com.example.myapplication.utils.AnimationUtils;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -80,26 +82,13 @@ public class MainContainerActivity extends AppCompatActivity {
         }
     }
     private void resetTab(TextView tab){
-        // 1. 设置颜色为灰色
-        tab.setTextColor(getResources().getColor(R.color.gray, null));
+        tab.setTextColor(getResources().getColor(R.color.gray_text, null));
 
-        // 2. 设置字体大小为 16sp（这是持久化的）
-        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
 
-        // 3. 取消缩放动画，恢复到 1.0
-        tab.animate()
-                .scaleX(1.0f)
-                .scaleY(1.0f)
-                .setDuration(200)
-                .start();
     }
     private void activateTab(TextView tab){
         tab.setTextColor(getResources().getColor(R.color.black, null));
-        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        tab.animate()
-                .scaleX(1.1f)
-                .scaleY(1.1f)
-                .setDuration(200)
-                .start();
+        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
     }
 }

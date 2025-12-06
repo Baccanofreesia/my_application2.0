@@ -28,6 +28,7 @@ public class HashtagActivity extends AppCompatActivity {
         // 初始化视图
         initViews();
 
+
         // 设置数据
         setupData();
 
@@ -60,8 +61,6 @@ public class HashtagActivity extends AppCompatActivity {
         tvHashtagTitle.setText(hashtagText);
 
         // TODO: 从服务器获取话题相关数据
-        // int postCount = ApiClient.getHashtagPostCount(hashtagText);
-        // List<Post> posts = ApiClient.getHashtagPosts(hashtagText);
 
         // 暂时使用模拟数据
         int postCount = 0; // 模拟数据
@@ -76,8 +75,6 @@ public class HashtagActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(layoutManager);
 
         // TODO: 设置适配器
-        // PostAdapter adapter = new PostAdapter(this, posts);
-        // recyclerView.setAdapter(adapter);
 
         // 暂时不设置适配器（空列表）
     }

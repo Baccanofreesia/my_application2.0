@@ -23,4 +23,20 @@ public class Clip {
     public String getUrl() {
         return url;
     }
+//测试
+//    public void setType(int type) {
+//        this.type = type;
+//    }
+//
+//    public void setUrl(String url) {
+//        this.url = url;
+//    }
+//
+//    public void setWidth(int width) {
+//        this.width = width;
+//    }
+//
+//    public void setHeight(int height) {
+//        this.height = height;
+//    }
 }

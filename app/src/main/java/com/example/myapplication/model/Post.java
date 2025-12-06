@@ -53,4 +53,28 @@ public class Post {
     public Music getMusic() {
         return music;
     }
+//测试
+//    public void setPostId(String testVideo) {
+//        this.postId = testVideo;
+//    }
+//
+//    public void setTitle(String s) {
+//        this.title = s;
+//    }
+//
+//    public void setContent(String s) {
+//        this.content = s;
+//    }
+//
+//    public void setAuthor(Author author) {
+//        this.author = author;
+//    }
+//
+//    public void setClips(List<Clip> clips) {
+//        this.clips = clips;
+//    }
+//
+//    public void setMusic(Music music) {
+//        this.music = music;
+//    }
 }

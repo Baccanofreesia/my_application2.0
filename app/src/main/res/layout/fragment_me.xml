@@ -29,7 +29,7 @@
             android:scaleType="centerCrop"
             android:contentDescription="用户头像" />
 
-        <!-- 用户信息（右侧垂直排列） -->
+        <!-- 用户信息 -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
