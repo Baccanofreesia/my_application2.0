@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -13,7 +15,7 @@ import android.widget.ProgressBar;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.android.exoplayer2.PlaybackException;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
@@ -21,12 +23,16 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.example.myapplication.model.Clip;
 import com.example.myapplication.utils.MusicStateManager;
-import com.google.android.exoplayer2.ExoPlaybackException;
+import com.google.android.exoplayer2.DefaultLoadControl;
+import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
+import com.google.android.exoplayer2.video.VideoSize;
 
 import java.util.List;
 
@@ -58,7 +64,6 @@ public class ClipPagerAdapter extends RecyclerView.Adapter<ClipPagerAdapter.Clip
     public ClipPagerAdapter(Context context, List<Clip> clips) {
         this.context = context;
         this.clips = clips;
-
     }
 
     @NonNull
@@ -134,25 +139,51 @@ public class ClipPagerAdapter extends RecyclerView.Adapter<ClipPagerAdapter.Clip
         FrameLayout.LayoutParams ep = new FrameLayout.LayoutParams(80, 80);
         ep.gravity = Gravity.CENTER;
         holder.container.addView(errorIv, ep);
+        //自定义播放器
+        PlayerView playerView = new PlayerView(context) {
+            @Override
+            protected void onAttachedToWindow() {
+                super.onAttachedToWindow();
+                if (getVideoSurfaceView() instanceof TextureView) {
+                    android.util.Log.d("VideoRender", "使用 TextureView 渲染");
+                }
+            }
+        };
 
-        // 创建 PlayerView
-        PlayerView playerView = new PlayerView(context);
         playerView.setUseController(false);
         playerView.setBackgroundColor(Color.BLACK);
         playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
 
-        //立即添加到容器
+        // 添加到容器
         FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
         );
         holder.container.addView(playerView, videoParams);
 
-        //创建 Player
-        SimpleExoPlayer player = new SimpleExoPlayer.Builder(context).build();
+        // 配置
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(context)
+                .setEnableDecoderFallback(true)  // 硬件解码失败时自动降级
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+
+        // 缓冲
+        LoadControl loadControl = new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        1500,   // minBufferMs: 最小缓冲 1.5 秒就开始播放
+                        3000,   // maxBufferMs: 最多缓冲 3 秒
+                        800,    // bufferForPlaybackMs: 播放需要 0.8 秒缓冲
+                        1200    // bufferForPlaybackAfterRebufferMs: 重新缓冲需要 1.2 秒
+                )
+                .setPrioritizeTimeOverSizeThresholds(true)  // 优先时长而非大小
+                .build();
+
+        // 创建播放器
+        SimpleExoPlayer player = new SimpleExoPlayer.Builder(context, renderersFactory)
+                .setLoadControl(loadControl)
+                .build();
+
         holder.player = player;
         holder.playerView = playerView;
-
         playerView.setPlayer(player);
 
         // 根据全局状态初始化
@@ -164,8 +195,12 @@ public class ClipPagerAdapter extends RecyclerView.Adapter<ClipPagerAdapter.Clip
                 ": volume=" + (isMuted ? "0" : "1") +
                 ", repeat=" + (isMuted ? "ONE" : "OFF"));
 
-        // 设置媒体并播放
-        MediaItem item = MediaItem.fromUri(clip.getUrl());
+        //  设置媒体并播放
+        MediaItem item = new MediaItem.Builder()
+                .setUri(clip.getUrl())
+                .setTag(position)
+                .build();
+
         player.setMediaItem(item);
         player.prepare();
         player.setPlayWhenReady(true);
@@ -176,6 +211,7 @@ public class ClipPagerAdapter extends RecyclerView.Adapter<ClipPagerAdapter.Clip
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
                     progress.setVisibility(View.VISIBLE);
+                    android.util.Log.d("VideoState", "缓冲中: " + position);
                 } else if (playbackState == Player.STATE_READY) {
                     progress.setVisibility(View.GONE);
                     errorIv.setVisibility(View.GONE);
@@ -201,15 +237,19 @@ public class ClipPagerAdapter extends RecyclerView.Adapter<ClipPagerAdapter.Clip
             public void onPlayerError(PlaybackException error) {
                 progress.setVisibility(View.GONE);
                 errorIv.setVisibility(View.VISIBLE);
-                android.util.Log.e("VideoError", "播放失败: " + error.getMessage());
+                android.util.Log.e("VideoError", "播放失败 [" + position + "]: " + error.getMessage());
 
                 if (clipLoadListener != null) {
                     clipLoadListener.onClipLoaded(position, false);
                 }
             }
+
+            @Override
+            public void onVideoSizeChanged(VideoSize videoSize) {
+                android.util.Log.d("VideoSize", "视频尺寸: " + videoSize.width + "x" + videoSize.height);
+            }
         });
     }
-
 
     @Override
     public int getItemCount() {

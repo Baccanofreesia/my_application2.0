@@ -125,6 +125,8 @@ public class PostDetailActivity extends AppCompatActivity {
     private boolean isCurrentClipLoaded = false;  // 当前图片是否加载完成
     private int maxLoadWaitTime = 6000;  // 最大等待时间
     private final List<SimpleExoPlayer> preloadPlayers = new ArrayList<>();
+    private static final int MAX_PRELOAD_VIDEOS = 1;
+    private boolean isVideoPlaying = false;  // 标记当前是否在播放视频
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -361,94 +363,130 @@ public class PostDetailActivity extends AppCompatActivity {
         tvCollectCount.setText(String.valueOf(CollectCountGenerator.generate(post.getPostId())));
         tvShareCount.setText(String.valueOf(ShareCountGenerator.generate(post.getPostId())));
     }
+
     private void preloadInitialClips() {
         if (post.getClips() == null || post.getClips().isEmpty()) return;
 
         List<Clip> clips = post.getClips();
+
+        // 统计视频数量
+        int videoCount = 0;
+        for (Clip clip : clips) {
+            if (clip.getType() == 1) videoCount++;
+        }
+
+        android.util.Log.d("Preload", "总共 " + clips.size() + " 个片段，其中 " + videoCount + " 个视频");
+
+        // 图片全部预加载，视频只预加载第一个
+        int preloadedVideos = 0;
         int preloadCount = Math.min(3, clips.size());
 
         for (int i = 0; i < preloadCount; i++) {
             Clip clip = clips.get(i);
+
             if (clip.getType() == 0) {
-                // 图片用 Glide 预加载
+                // 图片：直接预加载
                 Glide.with(this)
                         .load(clip.getUrl())
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
                         .preload();
+                android.util.Log.d("Preload", "预加载图片: " + i);
+
             } else {
-                // 视频用 ExoPlayer
-                SimpleExoPlayer preloadPlayer = new SimpleExoPlayer.Builder(this).build();
-                preloadPlayer.setMediaItem(MediaItem.fromUri(clip.getUrl()));
-                preloadPlayer.prepare();
-                preloadPlayer.setPlayWhenReady(false);  // 不播放，只缓存
-                // 监听缓存进度
-                preloadPlayer.addListener(new Player.Listener() {
-                    @Override
-                    public void onPlaybackStateChanged(int playbackState) {
-                        if (playbackState == Player.STATE_READY) {
-                            long bufferedPosition = preloadPlayer.getBufferedPosition();
-                            long duration = preloadPlayer.getDuration();
-                            if (duration > 0) {
-                                float percent = bufferedPosition * 100f / duration;
-                                android.util.Log.d("VideoPreload",
-                                        String.format("视频预缓存完成 %.1f%%: %s", percent, clip.getUrl()));
+                // 视频，只预加载第一个，避免占用多个解码器
+                if (preloadedVideos < MAX_PRELOAD_VIDEOS) {
+                    SimpleExoPlayer preloadPlayer = new SimpleExoPlayer.Builder(this).build();
+                    preloadPlayer.setMediaItem(MediaItem.fromUri(clip.getUrl()));
+                    preloadPlayer.setVolume(0f);  // 静音预加载
+                    preloadPlayer.prepare();
+                    preloadPlayer.setPlayWhenReady(false);  // 不播放，只缓存
+
+                    // 保留完整的监听器
+                    preloadPlayer.addListener(new Player.Listener() {
+                        @Override
+                        public void onPlaybackStateChanged(int playbackState) {
+                            if (playbackState == Player.STATE_READY) {
+                                long bufferedPosition = preloadPlayer.getBufferedPosition();
+                                long duration = preloadPlayer.getDuration();
+                                if (duration > 0) {
+                                    float percent = bufferedPosition * 100f / duration;
+                                    android.util.Log.d("VideoPreload",
+                                            String.format("视频预缓存完成 %.1f%%: %s", percent, clip.getUrl()));
+                                }
                             }
                         }
-                    }
 
-                    @Override
-                    public void onPositionDiscontinuity(
-                            Player.PositionInfo oldPosition,
-                            Player.PositionInfo newPosition,
-                            int reason) {
-                        long buffered = preloadPlayer.getBufferedPosition();
-                        long duration = preloadPlayer.getDuration();
-                        if (duration > 0) {
-                            float percent = buffered * 100f / duration;
-                            android.util.Log.v("VideoPreload",
-                                    String.format("缓存进度: %.1f%%", percent));
+                        @Override
+                        public void onPositionDiscontinuity(
+                                Player.PositionInfo oldPosition,
+                                Player.PositionInfo newPosition,
+                                int reason) {
+                            long buffered = preloadPlayer.getBufferedPosition();
+                            long duration = preloadPlayer.getDuration();
+                            if (duration > 0) {
+                                float percent = buffered * 100f / duration;
+                                android.util.Log.v("VideoPreload",
+                                        String.format("缓存进度: %.1f%%", percent));
+                            }
                         }
-                    }
-                });
-                preloadPlayers.add(preloadPlayer);
-                android.util.Log.d("Preload", "开始预加载视频: " + i + " " + clip.getUrl());
+                    });
+
+                    preloadPlayers.add(preloadPlayer);
+                    preloadedVideos++;
+                    android.util.Log.d("Preload", "预加载视频: " + i + " (共 " + preloadedVideos + "/" + videoCount + " 个)");
+                } else {
+                    android.util.Log.d("Preload", "跳过视频预加载: " + i + " (已达上限 " + MAX_PRELOAD_VIDEOS + ")");
+                }
             }
-
         }
-
     }
-    /**
-     * ✅ 预加载指定位置的图片
-     */
     private void preloadNextClip(int position) {
         if (position < 0 || position >= totalClipCount) return;
 
         Clip clip = post.getClips().get(position);
+
         if (clip.getType() == 0) {
-            // 图片
+            // 图片：直接预加载
             Glide.with(this)
                     .load(clip.getUrl())
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .preload();
+            android.util.Log.d("PreloadNext", "预加载图片: " + position);
+
         } else {
-            // 视频：创建一个临时的 Player 进行预缓存
+            //检查当前预加载播放器数量
+            if (preloadPlayers.size() >= MAX_PRELOAD_VIDEOS) {
+                // 释放最旧的预加载播放器
+                SimpleExoPlayer oldPlayer = preloadPlayers.remove(0);
+                if (oldPlayer != null) {
+                    try {
+                        oldPlayer.release();
+                        android.util.Log.d("PreloadNext", "释放旧的预加载播放器");
+                    } catch (Exception e) {
+                        android.util.Log.e("PreloadNext", "释放失败", e);
+                    }
+                }
+            }
+
+            // 创建新的预加载播放器
             SimpleExoPlayer tempPlayer = new SimpleExoPlayer.Builder(this).build();
             tempPlayer.setMediaItem(MediaItem.fromUri(clip.getUrl()));
+            tempPlayer.setVolume(0f);
             tempPlayer.prepare();
             tempPlayer.setPlayWhenReady(false);
+
             tempPlayer.addListener(new Player.Listener() {
                 @Override
                 public void onPlaybackStateChanged(int state) {
                     if (state == Player.STATE_READY) {
-                        android.util.Log.d("PreloadNext", "下一条视频预缓存完成: " + position);
-                        tempPlayer.release();
+                        android.util.Log.d("PreloadNext", "视频预缓存完成: " + position);
                     }
                 }
             });
 
+            preloadPlayers.add(tempPlayer);
+            android.util.Log.d("PreloadNext", "预加载视频: " + position);
         }
-
-        android.util.Log.d("PreloadNext", "预加载下一条: " + position + " type=" + clip.getType());
     }
     private void initAndPlayMusic(Music music) {
         // 先释放旧的 MediaPlayer
@@ -590,24 +628,31 @@ public class PostDetailActivity extends AppCompatActivity {
         adapter.setOnVideoPlayListener(new ClipPagerAdapter.OnVideoPlayListener() {
             @Override
             public void onVideoStart(int position) {
-                // 视频开始：暂停背景音乐
-                pauseMusicIfNeeded();
+                isVideoPlaying = true;
+                stopAutoPlay();  // 视频开始时停止轮播
+                //                // 视频开始：暂停背景音乐
+//                pauseMusicIfNeeded();
+                if (musicStateManager.isMuted()) {
+                    pauseMusicIfNeeded();
+                } else {
+                    android.util.Log.d("VideoCallback", "自动轮播模式：视频开始，不暂停BGM");
+                }
             }
 
             @Override
             public void onVideoComplete(int position) {
                 android.util.Log.d("VideoCallback", "视频播放完成: " + position);
-
-                boolean isMuted = musicStateManager.isMuted();
-                android.util.Log.d("VideoCallback", "当前状态: isMuted=" + isMuted +
-                        ", currentItem=" + viewPagerImages.getCurrentItem());
-                if (!isMuted && position == viewPagerImages.getCurrentItem()) {
-                    int nextPosition = (position + 1) % totalClipCount;
-                    android.util.Log.d("VideoCallback", "自动切换到: " + nextPosition);
-
-                    viewPagerImages.postDelayed(() -> {
-                        viewPagerImages.setCurrentItem(nextPosition, true);
-                    }, 300); // 延迟切换，避免卡顿
+                if (!musicStateManager.isMuted()) {
+                    int currentItem = viewPagerImages.getCurrentItem();
+                    if (position == currentItem) {
+                        int nextPosition = (currentItem + 1) % totalClipCount;
+                        android.util.Log.d("AutoPlay", "视频播完，自动切换到: " + nextPosition);
+                        viewPagerImages.postDelayed(() -> {
+                            if (!isDestroyed() && !isFinishing()) {
+                                viewPagerImages.setCurrentItem(nextPosition, true);
+                            }
+                        }, 300);
+                    }
                 }
             }
         });
@@ -629,7 +674,7 @@ public class PostDetailActivity extends AppCompatActivity {
 
                 viewPagerImages.postDelayed(() -> {
                     adjustMediaForCurrentClip();
-                }, 150); // 150ms 足够视图创建完成
+                }, 150);
 
                 // 重启图片轮播计时器
                 if (!musicStateManager.isMuted()) {
@@ -848,11 +893,6 @@ public class PostDetailActivity extends AppCompatActivity {
                     player.setPlayWhenReady(true);
                     android.util.Log.d("VideoFix", "正常状态，从头播放");
                 }
-            }
-            // 暂停 BGM
-            if (hasMusic && mediaPlayer != null && mediaPlayer.isPlaying()) {
-                mediaPlayer.pause();
-                android.util.Log.d("MediaControl", "暂停BGM");
             }
         } else { // 图片
             if (hasMusic && mediaPlayer != null) {
