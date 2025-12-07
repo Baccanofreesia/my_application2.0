@@ -103,7 +103,7 @@ public class HomeFragment extends Fragment {
                 pbLoading.setVisibility(View.VISIBLE);
             }
         }
-        FeedApi.getFeedList(20,false, new FeedApi.ApiCallback<FeedResponse>() {
+        FeedApi.getFeedList(20,true, new FeedApi.ApiCallback<FeedResponse>() {
             @Override
             public void onSuccess(FeedResponse data){
                 isLoading=false;
@@ -152,13 +152,25 @@ public class HomeFragment extends Fragment {
             Post post = posts.get(i);
             if (post.getClips() != null &&!post.getClips().isEmpty()) {
                 String coverUrl = post.getClips().get(0).getUrl();
-                Glide.with(requireContext())
-                        .load(coverUrl)
-                        .diskCacheStrategy(DiskCacheStrategy.ALL)  // 启用磁盘和内存缓存
-                        .preload();
+                // 判断是否为视频
+                if (isVideoUrl(coverUrl)) {
+                    // 预加载视频第一帧
+                    Glide.with(requireContext())
+                            .asBitmap()
+                            .load(android.net.Uri.parse(coverUrl))
+                            .frame(1000000)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .preload();
+                } else {
+                    // 预加载图片
+                    Glide.with(requireContext())
+                            .load(coverUrl)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .preload();
+                }
                 android.util.Log.d("ImagePreload", "预加载帖子 " + i + " 的封面: " + coverUrl);
             }
-            // 可选：预加载作者头像
+            // 预加载作者头像
             Author author = post.getAuthor();
             if (author != null && author.getAvatar() != null && !author.getAvatar().isEmpty()) {
                 Glide.with(requireContext())
@@ -167,6 +179,17 @@ public class HomeFragment extends Fragment {
                         .preload();
             }
         }
+    }
+    private boolean isVideoUrl(String url) {
+        if (url == null) return false;
+        String lowerUrl = url.toLowerCase();
+        return lowerUrl.endsWith(".mp4") ||
+                lowerUrl.endsWith(".mov") ||
+                lowerUrl.endsWith(".avi") ||
+                lowerUrl.endsWith(".mkv") ||
+                lowerUrl.endsWith(".flv") ||
+                lowerUrl.endsWith(".wmv") ||
+                lowerUrl.contains("video");
     }
     private void showEmptyState() {
         Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_LONG).show();

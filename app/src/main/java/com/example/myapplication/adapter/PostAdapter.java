@@ -96,13 +96,31 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 ViewGroup.LayoutParams params=ivCover.getLayoutParams();
                 params.height=targetHeight;
                 ivCover.setLayoutParams(params);
-                Glide.with(context)
-                        .load(firstClip.getUrl())
-                        .transform(new CenterCrop(),new RoundedCorners(16))
-                        .placeholder(R.color.gray_light)
-                        .error(R.color.gray_light)
-                        .diskCacheStrategy(DiskCacheStrategy.ALL)  // 启用缓存，与预加载一致
-                        .into(ivCover);
+                // 判断是图片还是视频
+                String url = firstClip.getUrl();
+                boolean isVideo = isVideoUrl(url);
+
+                if (isVideo) {
+                    // 加载视频第一帧
+                    Glide.with(context)
+                            .asBitmap()  // 关键:强制以 Bitmap 形式加载
+                            .load(android.net.Uri.parse(url))
+                            .frame(1000000)  // 提取第1秒的帧(微秒),可以改为0提取第一帧
+                            .transform(new CenterCrop(), new RoundedCorners(16))
+                            .placeholder(R.color.gray_light)
+                            .error(R.color.gray_light)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .into(ivCover);
+                } else {
+                    // 加载图片
+                    Glide.with(context)
+                            .load(url)
+                            .transform(new CenterCrop(), new RoundedCorners(16))
+                            .placeholder(R.color.gray_light)
+                            .error(R.color.gray_light)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .into(ivCover);
+                }
             }
             String displayText=!post.getTitle().isEmpty()?post.getTitle():post.getContent();
             tvTitle.setText(displayText);
@@ -165,6 +183,17 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 }
 
             });
+        }
+        private boolean isVideoUrl(String url) {
+            if (url == null) return false;
+            String lowerUrl = url.toLowerCase();
+            return lowerUrl.endsWith(".mp4") ||
+                    lowerUrl.endsWith(".mov") ||
+                    lowerUrl.endsWith(".avi") ||
+                    lowerUrl.endsWith(".mkv") ||
+                    lowerUrl.endsWith(".flv") ||
+                    lowerUrl.endsWith(".wmv") ||
+                    lowerUrl.contains("video");
         }
         private void updateLikeUI(boolean isLiked){
             if(isLiked){
